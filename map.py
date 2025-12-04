@@ -31,6 +31,17 @@ ox.plot_graph(
     edge_linewidth=0.5
 )
 
+ax_pos = ax.get_position()  
+fig.text(
+    0.5,                         # x-position (centered)
+    ax_pos.y0 - 0.01,             # directly below the map (0.01 = small gap)
+    str(location),               # text
+    ha="center",                 # horizontal alignment
+    va="bottom",
+    fontsize=12
+)
+
+
 # --- SAVE AS SVG ---
 fig.savefig("test2.svg", format="svg")
 plt.close(fig)
