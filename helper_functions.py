@@ -74,3 +74,17 @@ def get_graph(location, network_type="drive", dist=2000):
         return ox.graph_from_point((lat, lon), dist=dist, network_type=network_type)
 
     raise ValueError("location must be a place name (str) or a (lat, lon) tuple")
+
+
+def get_location_coordinates(location):
+    """
+    Returns (lat, lon) for a location.
+    - If location is already a tuple → return it unchanged.
+    - If it's a place name → geocode it using OSMnx.
+    """
+    if isinstance(location, (tuple, list)) and len(location) == 2:
+        return location
+    
+    # Otherwise: geocode place name
+    pt = ox.geocode(location)
+    return (pt[0], pt[1])   # lat, lon
