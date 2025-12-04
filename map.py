@@ -1,16 +1,17 @@
 import osmnx as ox
 import matplotlib.pyplot as plt
-from helper_functions import get_page_layout 
+from helper_functions import get_page_layout, get_graph
 
 # --- SETTINGS ---
 ox.settings.use_cache = True
 ox.settings.log_console = True
 
-place_name = "Berlin, Germany"
+location = "Berlin, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
 fig_w, fig_h, rect = get_page_layout("a4", 20)
 
 # --- DOWNLOAD GRAPH ---
-G = ox.graph_from_place(place_name, network_type="drive")
+G = get_graph(location, network_type="drive", dist=5000)
+
 
 # --- CREATE FIGURE ---
 fig = plt.figure(figsize=(fig_w, fig_h))
@@ -31,7 +32,7 @@ ox.plot_graph(
 )
 
 # --- SAVE AS SVG ---
-fig.savefig("berlin_A4_centered.svg", format="svg")
+fig.savefig("test2.svg", format="svg")
 plt.close(fig)
 
 print("Saved as berlin_A4_centered.svg")
