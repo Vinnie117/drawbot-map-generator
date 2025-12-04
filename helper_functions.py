@@ -88,3 +88,16 @@ def get_location_coordinates(location):
     # Otherwise: geocode place name
     pt = ox.geocode(location)
     return (pt[0], pt[1])   # lat, lon
+
+
+def get_text_height(fig, text, fontsize):
+    """
+    Return text height in figure coordinates (0–1).
+    """
+    renderer = fig.canvas.get_renderer()
+    dummy = fig.text(0, 0, text, fontsize=fontsize)
+    bbox = dummy.get_window_extent(renderer=renderer)
+    dummy.remove()
+
+    # Convert from pixel height to figure height units
+    return bbox.height / fig.bbox.height

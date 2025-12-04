@@ -1,6 +1,6 @@
 import osmnx as ox
 import matplotlib.pyplot as plt
-from helper_functions import get_page_layout, get_graph, get_location_coordinates
+from helper_functions import get_page_layout, get_graph, get_location_coordinates, get_text_height
 
 # --- SETTINGS ---
 ox.settings.use_cache = True
@@ -43,26 +43,38 @@ lon_suffix = "E" if lon >= 0 else "W"
 coord_text = f"{abs(lat):.2f}° {lat_suffix}, {abs(lon):.2f}° {lon_suffix}"
 
 # City name label
-y1 = ax_pos.y0 - 0.01
+city_fontsize = 20
+coord_fontsize = 12
+
+city_text = str(location)
+coord_text = coord_text  # from earlier
+
+# Measure heights
+city_h = get_text_height(fig, city_text, city_fontsize)
+coord_h = get_text_height(fig, coord_text, coord_fontsize)
+
+padding = city_h * 0.3  # XX% of city text height as extra spacing
+
+# Position city name
+y1 = ax_pos.y0 - padding
 fig.text(
     0.5,
     y1,
-    str(location),
+    city_text,
     ha="center",
     va="top",
-    fontsize=12
+    fontsize=city_fontsize
 )
 
-# Coordinates label
-y2 = y1 - 0.02
+# Position coordinates directly below city name
+y2 = y1 - city_h - padding
 fig.text(
     0.5,
     y2,
     coord_text,
     ha="center",
     va="top",
-    fontsize=10,
-    color="black"
+    fontsize=coord_fontsize
 )
 
 
