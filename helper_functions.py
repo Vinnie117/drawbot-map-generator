@@ -79,25 +79,123 @@ def get_graph(location, network_type="drive", dist=2000):
 def get_location_coordinates(location):
     """
     Returns (lat, lon) for a location.
-    - If location is already a tuple → return it unchanged.
-    - If it's a place name → geocode it using OSMnx.
+    - If location is already a tuple/list -> return it unchanged.
+    - If it's a place name string -> geocode it using OSMnx.
     """
     if isinstance(location, (tuple, list)) and len(location) == 2:
-        return location
-    
-    # Otherwise: geocode place name
+        return float(location[0]), float(location[1])
+
     pt = ox.geocode(location)
-    return (pt[0], pt[1])   # lat, lon
+    return float(pt[0]), float(pt[1])
 
 
 def get_text_height(fig, text, fontsize):
     """
     Return text height in figure coordinates (0–1).
     """
+    # Ensure we have a renderer
+    fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
+
     dummy = fig.text(0, 0, text, fontsize=fontsize)
     bbox = dummy.get_window_extent(renderer=renderer)
     dummy.remove()
 
-    # Convert from pixel height to figure height units
     return bbox.height / fig.bbox.height
+
+
+def add_map_labels(
+    fig,
+    ax,
+    location,
+    mode="map_centered",
+    show_coords=True,
+    city_fontsize=20,
+    coord_fontsize=12,
+    padding_factor=0.3,
+    between_factor=0.5,
+):
+    """
+    Add city name (+ optional coordinates) below the map.
+
+    Args:
+        fig, ax: Matplotlib figure and axes.
+        location: place name string or (lat, lon) tuple.
+        mode:
+            - "map_centered": map is centered; labels appended below.
+            - "block_centered": map + labels are treated as one block and
+                                vertically centered on the figure.
+        show_coords (bool): toggle coordinate line on/off.
+        city_fontsize, coord_fontsize: font sizes.
+        padding_factor: padding between map and city label (relative to city height).
+        between_factor: padding between city label and coordinates (relative to city height).
+    """
+    ax_pos = ax.get_position()
+
+    # --- Text contents ---
+    city_text = str(location)
+
+    lat, lon = get_location_coordinates(location)
+    lat_suffix = "N" if lat >= 0 else "S"
+    lon_suffix = "E" if lon >= 0 else "W"
+    coord_text = f"{abs(lat):.2f}° {lat_suffix}, {abs(lon):.2f}° {lon_suffix}"
+
+    # --- Text heights ---
+    city_h = get_text_height(fig, city_text, city_fontsize)
+    coord_h = get_text_height(fig, coord_text, coord_fontsize) if show_coords else 0.0
+
+    padding = city_h * padding_factor       # map → city
+    between = city_h * between_factor if show_coords else 0.0  # city → coords
+
+    # Initial positions, relative to current map location
+    y_city = ax_pos.y0 - padding
+    y_coord = y_city - city_h - between if show_coords else None
+
+    if mode == "block_centered":
+        # Top of block = top of map
+        top = ax_pos.y1
+
+        if show_coords:
+            # Bottom = bottom of coordinates line
+            bottom = y_coord - coord_h
+        else:
+            # Bottom = bottom of city label
+            bottom = y_city - city_h
+
+        block_center = 0.5 * (top + bottom)
+        delta = 0.5 - block_center
+
+        # Shift map
+        new_ax_pos = [
+            ax_pos.x0,
+            ax_pos.y0 + delta,
+            ax_pos.width,
+            ax_pos.height,
+        ]
+        ax.set_position(new_ax_pos)
+
+        # Shift text positions
+        y_city += delta
+        if show_coords:
+            y_coord += delta
+
+    # --- Draw labels ---
+    fig.text(
+        0.5,
+        y_city,
+        city_text,
+        ha="center",
+        va="top",
+        fontsize=city_fontsize,
+    )
+
+    if show_coords:
+        fig.text(
+            0.5,
+            y_coord,
+            coord_text,
+            ha="center",
+            va="top",
+            fontsize=coord_fontsize,
+            color="black",
+        )
