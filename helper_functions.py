@@ -116,6 +116,8 @@ def add_map_labels(
     coord_fontsize=12,
     padding_factor=0.3,
     between_factor=0.5,
+    coords_override=None,
+    coords_color="black"
 ):
     """
     Add city name (+ optional coordinates) above or below the map.
@@ -143,10 +145,21 @@ def add_map_labels(
     # --- Text contents ---
     city_text = str(location)
 
-    lat, lon = get_location_coordinates(location)
+    # choose which coords to display
+    if coords_override is not None:
+        lat, lon = float(coords_override[0]), float(coords_override[1])
+        precision = 4   # explicit marker coordinates → higher precision
+    else:
+        lat, lon = get_location_coordinates(location)
+        precision = 2   # city / place name → lower precision
+
     lat_suffix = "N" if lat >= 0 else "S"
     lon_suffix = "E" if lon >= 0 else "W"
-    coord_text = f"{abs(lat):.2f}° {lat_suffix}, {abs(lon):.2f}° {lon_suffix}"
+
+    coord_text = (
+        f"{abs(lat):.{precision}f}° {lat_suffix}, "
+        f"{abs(lon):.{precision}f}° {lon_suffix}"
+    )
 
     # --- Text heights ---
     city_h = get_text_height(fig, city_text, city_fontsize)
@@ -205,34 +218,26 @@ def add_map_labels(
             ha="center",
             va="top" if position == "bottom" else "bottom",
             fontsize=coord_fontsize,
-            color="black",
+            color=coords_color,   # <- use marker color here
         )
 
 
 
 
-def add_marker(ax, G, lat_lon, color="red", size=40, zorder=10):
+def add_marker(ax, G, lat_lon, color="red", size=40, zorder=10, edgecolor=None, linewidth=0):
     """
-    Draw a marker (dot) on an OSMnx map at the given (lat, lon).
-
-    Args:
-        ax: Matplotlib axes that the graph was drawn onto.
-        G: OSMnx graph.
-        lat_lon: tuple (lat, lon) in WGS84.
-        color: dot color.
-        size: scatter size (points^2).
-        zorder: draw order (higher draws on top).
+    Draw a marker on the OSMnx map at (lat, lon) (WGS84) and return (lat, lon).
     """
-    lat, lon = lat_lon
-
+    lat, lon = float(lat_lon[0]), float(lat_lon[1])
     graph_crs = G.graph.get("crs", None)
 
-    # If graph is unprojected (EPSG:4326), nodes use lon/lat directly as x/y
     if graph_crs is None or str(graph_crs).lower() in {"epsg:4326", "4326"}:
         x, y = lon, lat
     else:
-        # Transform WGS84 lon/lat -> graph CRS
         transformer = Transformer.from_crs("EPSG:4326", graph_crs, always_xy=True)
         x, y = transformer.transform(lon, lat)
 
-    ax.scatter([x], [y], s=size, c=color, zorder=zorder)
+    ax.scatter([x], [y], s=size, c=color, zorder=zorder,
+               edgecolors=edgecolor if edgecolor is not None else "none",
+               linewidths=linewidth)
+    return (lat, lon)

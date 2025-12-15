@@ -8,7 +8,10 @@ ox.settings.log_console = True
 
 location = "Berlin, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
 fig_w, fig_h, rect = get_page_layout("a4", 20)
+
+# Example point (Brandenburger Tor)
 point = (52.516275, 13.377704)
+marker_color = "red"
 
 # --- DOWNLOAD GRAPH ---
 G = get_graph(location, network_type="drive", dist=5000)
@@ -32,9 +35,19 @@ ox.plot_graph(
     edge_linewidth=0.5
 )
 
+# Add marker point
+marker_latlon = add_marker(ax, G, point, color=marker_color, size=20)
+
 # --- LABELS (choose layout mode here) ---
 # Map + labels centered, with coordinates
-add_map_labels(fig, ax, location, mode="block_centered", position="bottom", show_coords=True)
+add_map_labels(
+    fig, ax, location,
+    mode="block_centered",
+    position="bottom",
+    show_coords=True,
+    coords_override=marker_latlon,   # show marker coords if present
+    coords_color=marker_color        # same color as dot
+)
 
 # or: Map + only city name centered, no coordinates
 # add_map_labels(fig, ax, location, mode="block_centered", position="top", show_coords=False, padding_factor=0.5)
@@ -43,13 +56,10 @@ add_map_labels(fig, ax, location, mode="block_centered", position="bottom", show
 #add_map_labels(fig, ax, location, mode="map_centered", position="bottom", show_coords=True)
 
 
-# Example point (Brandenburger Tor)
-add_marker(ax, G, point, color="red", size=10)
-
 # --- SAVE AS SVG ---
 fig.patch.set_visible(False)   # removes patch_1
 ax.patch.set_visible(False)    # removes patch_2
-fig.savefig("test6.svg", format="svg", transparent=True)
+fig.savefig("test5.svg", format="svg", transparent=True)
 plt.close(fig)
 
 print("Saved as berlin_A4_centered.svg")
