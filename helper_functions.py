@@ -1,4 +1,5 @@
 import osmnx as ox
+from pyproj import Transformer
 
 def get_page_layout(paper_format: str, margin_mm: float):
     """
@@ -109,6 +110,7 @@ def add_map_labels(
     ax,
     location,
     mode="map_centered",
+    position="bottom",        # NEW: "bottom" or "top"
     show_coords=True,
     city_fontsize=20,
     coord_fontsize=12,
@@ -116,20 +118,26 @@ def add_map_labels(
     between_factor=0.5,
 ):
     """
-    Add city name (+ optional coordinates) below the map.
+    Add city name (+ optional coordinates) above or below the map.
 
     Args:
         fig, ax: Matplotlib figure and axes.
         location: place name string or (lat, lon) tuple.
         mode:
-            - "map_centered": map is centered; labels appended below.
+            - "map_centered": map is centered; labels appended above/below.
             - "block_centered": map + labels are treated as one block and
                                 vertically centered on the figure.
+        position:
+            - "bottom": labels below the map
+            - "top": labels above the map
         show_coords (bool): toggle coordinate line on/off.
         city_fontsize, coord_fontsize: font sizes.
-        padding_factor: padding between map and city label (relative to city height).
-        between_factor: padding between city label and coordinates (relative to city height).
+        padding_factor: spacing between map and city label (relative to city height).
+        between_factor: spacing between city label and coordinates (relative to city height).
     """
+    if position not in {"bottom", "top"}:
+        raise ValueError("position must be 'bottom' or 'top'")
+
     ax_pos = ax.get_position()
 
     # --- Text contents ---
@@ -144,58 +152,87 @@ def add_map_labels(
     city_h = get_text_height(fig, city_text, city_fontsize)
     coord_h = get_text_height(fig, coord_text, coord_fontsize) if show_coords else 0.0
 
-    padding = city_h * padding_factor       # map → city
-    between = city_h * between_factor if show_coords else 0.0  # city → coords
+    padding = city_h * padding_factor
+    between = city_h * between_factor if show_coords else 0.0
 
-    # Initial positions, relative to current map location
-    y_city = ax_pos.y0 - padding
-    y_coord = y_city - city_h - between if show_coords else None
+    # --- Initial positions (relative to map) ---
+    if position == "bottom":
+        y_city = ax_pos.y0 - padding
+        y_coord = y_city - city_h - between if show_coords else None
+        block_top = ax_pos.y1
+        block_bottom = (y_coord - coord_h) if show_coords else (y_city - city_h)
 
+    else:  # position == "top"
+        y_city = ax_pos.y1 + padding
+        y_coord = y_city + city_h + between if show_coords else None
+        block_top = (y_coord + coord_h) if show_coords else (y_city + city_h)
+        block_bottom = ax_pos.y0
+
+    # --- Block centering logic ---
     if mode == "block_centered":
-        # Top of block = top of map
-        top = ax_pos.y1
-
-        if show_coords:
-            # Bottom = bottom of coordinates line
-            bottom = y_coord - coord_h
-        else:
-            # Bottom = bottom of city label
-            bottom = y_city - city_h
-
-        block_center = 0.5 * (top + bottom)
+        block_center = 0.5 * (block_top + block_bottom)
         delta = 0.5 - block_center
 
         # Shift map
-        new_ax_pos = [
+        ax.set_position([
             ax_pos.x0,
             ax_pos.y0 + delta,
             ax_pos.width,
             ax_pos.height,
-        ]
-        ax.set_position(new_ax_pos)
+        ])
 
-        # Shift text positions
+        # Shift labels
         y_city += delta
         if show_coords:
             y_coord += delta
 
-    # --- Draw labels ---
+    # --- Draw city label ---
     fig.text(
         0.5,
         y_city,
         city_text,
         ha="center",
-        va="top",
+        va="top" if position == "bottom" else "bottom",
         fontsize=city_fontsize,
     )
 
+    # --- Draw coordinates ---
     if show_coords:
         fig.text(
             0.5,
             y_coord,
             coord_text,
             ha="center",
-            va="top",
+            va="top" if position == "bottom" else "bottom",
             fontsize=coord_fontsize,
             color="black",
         )
+
+
+
+
+def add_marker(ax, G, lat_lon, color="red", size=40, zorder=10):
+    """
+    Draw a marker (dot) on an OSMnx map at the given (lat, lon).
+
+    Args:
+        ax: Matplotlib axes that the graph was drawn onto.
+        G: OSMnx graph.
+        lat_lon: tuple (lat, lon) in WGS84.
+        color: dot color.
+        size: scatter size (points^2).
+        zorder: draw order (higher draws on top).
+    """
+    lat, lon = lat_lon
+
+    graph_crs = G.graph.get("crs", None)
+
+    # If graph is unprojected (EPSG:4326), nodes use lon/lat directly as x/y
+    if graph_crs is None or str(graph_crs).lower() in {"epsg:4326", "4326"}:
+        x, y = lon, lat
+    else:
+        # Transform WGS84 lon/lat -> graph CRS
+        transformer = Transformer.from_crs("EPSG:4326", graph_crs, always_xy=True)
+        x, y = transformer.transform(lon, lat)
+
+    ax.scatter([x], [y], s=size, c=color, zorder=zorder)
