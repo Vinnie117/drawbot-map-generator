@@ -1,5 +1,6 @@
 import osmnx as ox
 from pyproj import Transformer
+import matplotlib.pyplot as plt
 
 def get_page_layout(paper_format: str, margin_mm: float):
     """
@@ -111,6 +112,7 @@ def add_map_labels(
     location,
     mode="map_centered",
     position="bottom",        # NEW: "bottom" or "top"
+    show_city=True,     
     show_coords=True,
     city_fontsize=20,
     coord_fontsize=12,
@@ -162,22 +164,31 @@ def add_map_labels(
     )
 
     # --- Text heights ---
-    city_h = get_text_height(fig, city_text, city_fontsize)
+    city_h = get_text_height(fig, city_text, city_fontsize) if show_city else 0.0
     coord_h = get_text_height(fig, coord_text, coord_fontsize) if show_coords else 0.0
 
-    padding = city_h * padding_factor
-    between = city_h * between_factor if show_coords else 0.0
+    # Use something sensible for spacing if city hidden
+    base_h = city_h if city_h > 0 else (coord_h if coord_h > 0 else 0.02)
+    padding = base_h * padding_factor
+    between = base_h * between_factor if (show_city and show_coords) else 0.0
 
     # --- Initial positions (relative to map) ---
     if position == "bottom":
         y_city = ax_pos.y0 - padding
-        y_coord = y_city - city_h - between if show_coords else None
+        if show_city and show_coords:
+            y_coord = y_city - city_h - between
+        else:
+            # coords directly under map when city hidden
+            y_coord = ax_pos.y0 - padding
         block_top = ax_pos.y1
         block_bottom = (y_coord - coord_h) if show_coords else (y_city - city_h)
-
-    else:  # position == "top"
+    
+    else: # position == "top"
         y_city = ax_pos.y1 + padding
-        y_coord = y_city + city_h + between if show_coords else None
+        if show_city and show_coords:
+            y_coord = y_city + city_h + between
+        else:
+            y_coord = ax_pos.y1 + padding
         block_top = (y_coord + coord_h) if show_coords else (y_city + city_h)
         block_bottom = ax_pos.y0
 
@@ -200,14 +211,13 @@ def add_map_labels(
             y_coord += delta
 
     # --- Draw city label ---
-    fig.text(
-        0.5,
-        y_city,
-        city_text,
-        ha="center",
-        va="top" if position == "bottom" else "bottom",
-        fontsize=city_fontsize,
-    )
+    if show_city:
+        fig.text(
+            0.5, y_city, city_text,
+            ha="center",
+            va="top" if position == "bottom" else "bottom",
+            fontsize=city_fontsize,
+        )
 
     # --- Draw coordinates ---
     if show_coords:
@@ -241,3 +251,140 @@ def add_marker(ax, G, lat_lon, color="red", size=40, zorder=10, edgecolor=None, 
                edgecolors=edgecolor if edgecolor is not None else "none",
                linewidths=linewidth)
     return (lat, lon)
+
+
+
+def export_svg_with_layers(
+    G,
+    location,
+    page_layout,          # (fig_w, fig_h, rect) from get_page_layout
+    point=None,           # (lat, lon) or None
+    marker_color="red",
+    marker_size=10,
+    mode="block_centered",
+    position="bottom",
+    out_combined="combined.svg",
+    out_base="layer_base.svg",
+    out_overlay="layer_overlay.svg",
+):
+    """
+    Export three SVGs that align perfectly:
+      - combined: map + city + marker + marker coords
+      - base:     map + city only
+      - overlay:  marker + marker coords only
+
+    Requires these functions to exist in your helpers:
+      - add_map_labels(...)
+      - add_marker(...)
+    """
+    fig_w, fig_h, rect = page_layout
+
+    # -------------------------
+    # BASE: map + city name
+    # -------------------------
+    fig_base = plt.figure(figsize=(fig_w, fig_h))
+    ax_base = fig_base.add_axes(rect)
+
+    ox.plot_graph(
+        G, ax=ax_base,
+        show=False, close=False,
+        bgcolor="white",
+        node_size=0,
+        edge_color="black",
+        edge_linewidth=0.5
+    )
+
+    # Lock view for perfect alignment
+    xlim = ax_base.get_xlim()
+    ylim = ax_base.get_ylim()
+    aspect = ax_base.get_aspect()
+
+    # City label only
+    add_map_labels(
+        fig_base, ax_base, location,
+        mode=mode, position=position,
+        show_coords=False
+    )
+
+    fig_base.patch.set_visible(False)
+    ax_base.patch.set_visible(False)
+    fig_base.savefig(out_base, format="svg", transparent=True)
+    plt.close(fig_base)
+
+    # -------------------------
+    # OVERLAY: marker + coords
+    # -------------------------
+    fig_ov = plt.figure(figsize=(fig_w, fig_h))
+    ax_ov = fig_ov.add_axes(rect)
+    ax_ov.set_axis_off()
+
+    ax_ov.set_xlim(xlim)
+    ax_ov.set_ylim(ylim)
+    ax_ov.set_aspect(aspect)
+
+    marker_latlon = None
+    if point is not None:
+        marker_latlon = add_marker(
+            ax_ov, G, point,
+            color=marker_color,
+            size=marker_size
+        )
+
+    # Marker coords only (in marker color)
+    if marker_latlon is not None:
+        add_map_labels(
+            fig_ov, ax_ov, location,
+            mode=mode, position=position,
+            show_city=False, show_coords=True,
+            coords_override=marker_latlon,
+            coords_color=marker_color
+        )
+
+    fig_ov.patch.set_visible(False)
+    ax_ov.patch.set_visible(False)
+    fig_ov.savefig(out_overlay, format="svg", transparent=True)
+    plt.close(fig_ov)
+
+    # -------------------------
+    # COMBINED: everything
+    # -------------------------
+    fig_all = plt.figure(figsize=(fig_w, fig_h))
+    ax_all = fig_all.add_axes(rect)
+
+    # Use the exact same locked view
+    ax_all.set_xlim(xlim)
+    ax_all.set_ylim(ylim)
+    ax_all.set_aspect(aspect)
+
+    # Draw map again (so combined is standalone)
+    ox.plot_graph(
+        G, ax=ax_all,
+        show=False, close=False,
+        bgcolor="white",
+        node_size=0,
+        edge_color="black",
+        edge_linewidth=0.5
+    )
+
+    # Draw marker
+    marker_latlon2 = None
+    if point is not None:
+        marker_latlon2 = add_marker(
+            ax_all, G, point,
+            color=marker_color,
+            size=marker_size
+        )
+
+    # Draw labels: city + marker coords (if point provided), else city + place coords
+    add_map_labels(
+        fig_all, ax_all, location,
+        mode=mode, position=position,
+        show_coords=True,
+        coords_override=marker_latlon2,      # None -> uses location coords
+        coords_color=marker_color if marker_latlon2 is not None else "black"
+    )
+
+    fig_all.patch.set_visible(False)
+    ax_all.patch.set_visible(False)
+    fig_all.savefig(out_combined, format="svg", transparent=True)
+    plt.close(fig_all)

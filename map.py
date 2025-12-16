@@ -1,6 +1,7 @@
 import osmnx as ox
 import matplotlib.pyplot as plt
-from helper_functions import get_page_layout, get_graph, get_location_coordinates, get_text_height, add_map_labels, add_marker
+from helper_functions import get_page_layout, get_graph, get_location_coordinates, get_text_height, add_map_labels, add_marker, export_svg_with_layers
+
 
 # --- SETTINGS ---
 ox.settings.use_cache = True
@@ -44,6 +45,7 @@ add_map_labels(
     fig, ax, location,
     mode="block_centered",
     position="bottom",
+    show_city=False,
     show_coords=True,
     coords_override=marker_latlon,   # show marker coords if present
     coords_color=marker_color        # same color as dot
@@ -57,9 +59,26 @@ add_map_labels(
 
 
 # --- SAVE AS SVG ---
+
 fig.patch.set_visible(False)   # removes patch_1
 ax.patch.set_visible(False)    # removes patch_2
 fig.savefig("test5.svg", format="svg", transparent=True)
 plt.close(fig)
 
-print("Saved as berlin_A4_centered.svg")
+print("#### #### ####")
+
+export_svg_with_layers(
+    G,
+    location,
+    page_layout=(fig_w, fig_h, rect),
+    point=point,
+    marker_color="red",
+    marker_size=10,
+    mode="block_centered",
+    position="bottom",
+    out_combined="all_in_one.svg",
+    out_base="base_map.svg",
+    out_overlay="marker_overlay.svg"
+)
+
+print("END")
