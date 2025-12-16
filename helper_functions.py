@@ -1,6 +1,7 @@
 import osmnx as ox
 from pyproj import Transformer
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 def get_page_layout(paper_format: str, margin_mm: float):
     """
@@ -347,3 +348,47 @@ def export_svg_with_layers(
     ax_all.patch.set_visible(False)
     fig_all.savefig(out_combined, format="svg", transparent=True)
     plt.close(fig_all)
+
+
+def set_map_frame(fig, ax, enabled=True, linewidth=1.0, color="black", pad=0.0, zorder=50):
+    """
+    Draw (or hide) a rectangle frame around the map axes area.
+
+    Args:
+        fig, ax: Matplotlib figure/axes.
+        enabled (bool): show/hide frame.
+        linewidth (float): stroke width in points.
+        color (str): stroke color.
+        pad (float): padding around the axes box in figure coordinates (0..1).
+                     Example: 0.005 adds a small gap outward.
+        zorder (int): draw order.
+    Returns:
+        The Rectangle artist (or None if disabled).
+    """
+    # store reference so repeated calls replace the old one
+    old = getattr(ax, "_map_frame_artist", None)
+    if old is not None:
+        old.remove()
+        ax._map_frame_artist = None
+
+    if not enabled:
+        return None
+
+    pos = ax.get_position()  # in figure coords
+    x0 = pos.x0 - pad
+    y0 = pos.y0 - pad
+    w = pos.width + 2 * pad
+    h = pos.height + 2 * pad
+
+    frame = Rectangle(
+        (x0, y0), w, h,
+        transform=fig.transFigure,
+        fill=False,
+        edgecolor=color,
+        linewidth=linewidth,
+        zorder=zorder,
+        joinstyle="miter"
+    )
+    fig.add_artist(frame)
+    ax._map_frame_artist = frame
+    return frame

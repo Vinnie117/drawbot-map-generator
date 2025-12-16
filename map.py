@@ -1,6 +1,6 @@
 import osmnx as ox
 import matplotlib.pyplot as plt
-from helper_functions import get_page_layout, get_graph, get_location_coordinates, get_text_height, add_map_labels, add_marker, export_svg_with_layers
+from helper_functions import get_page_layout, get_graph, set_map_frame, add_map_labels, add_marker, export_svg_with_layers
 
 
 # --- SETTINGS ---
@@ -45,7 +45,7 @@ add_map_labels(
     fig, ax, location,
     mode="block_centered",
     position="bottom",
-    show_city=False,
+    show_city=True,
     show_coords=True,
     coords_override=marker_latlon,   # show marker coords if present
     coords_color=marker_color        # same color as dot
@@ -57,6 +57,8 @@ add_map_labels(
 # or: keep only the map centered, text just appended below
 #add_map_labels(fig, ax, location, mode="map_centered", position="bottom", show_coords=True)
 
+# turn frame on / off by setting 'enabled' arg
+set_map_frame(fig, ax, enabled=True, linewidth=1.2, color="black", pad=0.0)
 
 # --- SAVE AS SVG ---
 
