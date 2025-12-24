@@ -78,17 +78,23 @@ plt.close(fig)
 print("#### #### ####")
 
 export_svg_with_layers(
-    G,
-    location,
+    G=G,
+    location=location,
     page_layout=(fig_w, fig_h, rect),
-    point=point,
-    marker_color="red",
-    marker_size=10,
+    point=point,                     # set to None if no marker
+    marker_color=marker_color,
+    marker_size=20,
     mode="block_centered",
     position="bottom",
-    out_combined="all_in_one.svg",
-    out_base="base_map.svg",
-    out_overlay="marker_overlay.svg"
+
+    out_base="maps/hamburg_base.svg",
+    out_overlay="maps/hamburg_overlay.svg",
+    out_combined="maps/hamburg_combined.svg",
+
+    city_fontsize=20,
+    coord_fontsize=12,
+    padding_factor=0.3,
+    between_factor=0.5,
 )
 
 print("END")
