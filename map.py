@@ -72,7 +72,7 @@ set_map_frame(fig, ax, enabled=False, linewidth=1.2, color="black", pad=0.0)
 
 fig.patch.set_visible(False)   # removes patch_1
 ax.patch.set_visible(False)    # removes patch_2
-fig.savefig("hamburg_a4_filtered_30m.svg", format="svg", transparent=True)
+fig.savefig("maps/hamburg_a4_filtered_30m.svg", format="svg", transparent=True)
 plt.close(fig)
 
 print("#### #### ####")

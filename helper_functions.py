@@ -265,7 +265,7 @@ def export_svg_with_layers(
     fig_base.patch.set_visible(False)
     ax_base.patch.set_visible(False)
     ax_base.set_axis_off()
-    fig_base.savefig(out_base, format="svg", transparent=True)
+    fig_base.savefig("maps/" + out_base, format="svg", transparent=True)
     plt.close(fig_base)
 
     # -------------------------
@@ -302,7 +302,7 @@ def export_svg_with_layers(
 
     fig_ov.patch.set_visible(False)
     ax_ov.patch.set_visible(False)
-    fig_ov.savefig(out_overlay, format="svg", transparent=True)
+    fig_ov.savefig("maps/" + out_overlay, format="svg", transparent=True)
     plt.close(fig_ov)
 
     # -------------------------
@@ -346,7 +346,7 @@ def export_svg_with_layers(
 
     fig_all.patch.set_visible(False)
     ax_all.patch.set_visible(False)
-    fig_all.savefig(out_combined, format="svg", transparent=True)
+    fig_all.savefig("maps/" + out_combined, format="svg", transparent=True)
     plt.close(fig_all)
 
 
