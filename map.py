@@ -1,13 +1,13 @@
 import osmnx as ox
 import matplotlib.pyplot as plt
-from helper_functions import get_page_layout, get_graph, set_map_frame, add_map_labels, add_marker, export_svg_with_layers
+from helper_functions import get_page_layout, get_graph, set_map_frame, add_map_labels, filter_short_edges, add_marker, export_svg_with_layers, crop_view_to_frame
 
 
 # --- SETTINGS ---
 ox.settings.use_cache = True
 ox.settings.log_console = True
 
-location = "Berlin, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
+location = "Hamburg, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
 fig_w, fig_h, rect = get_page_layout("a4", 20)
 
 # Example point (Brandenburger Tor)
@@ -15,7 +15,8 @@ point = (52.516275, 13.377704)
 marker_color = "red"
 
 # --- DOWNLOAD GRAPH ---
-G = get_graph(location, network_type="drive", dist=5000)
+G_raw = get_graph(location, network_type="drive", dist=5000)
+G = filter_short_edges(G_raw, min_length_m=30)
 
 
 # --- CREATE FIGURE ---
@@ -36,6 +37,13 @@ ox.plot_graph(
     edge_linewidth=0.5
 )
 
+# # show a 5km-tall window centered on Brandenburger Tor
+# crop_view_to_frame(
+#     fig, ax, G,
+#     center_latlon=(52.516275, 13.377704),
+#     height_m=5000
+# )
+
 # Add marker point
 marker_latlon = add_marker(ax, G, point, color=marker_color, size=20)
 
@@ -46,7 +54,7 @@ add_map_labels(
     mode="block_centered",
     position="bottom",
     show_city=True,
-    show_coords=True,
+    show_coords=False,
     coords_override=marker_latlon,   # show marker coords if present
     coords_color=marker_color        # same color as dot
 )
@@ -58,13 +66,13 @@ add_map_labels(
 #add_map_labels(fig, ax, location, mode="map_centered", position="bottom", show_coords=True)
 
 # turn frame on / off by setting 'enabled' arg
-set_map_frame(fig, ax, enabled=True, linewidth=1.2, color="black", pad=0.0)
+set_map_frame(fig, ax, enabled=False, linewidth=1.2, color="black", pad=0.0)
 
 # --- SAVE AS SVG ---
 
 fig.patch.set_visible(False)   # removes patch_1
 ax.patch.set_visible(False)    # removes patch_2
-fig.savefig("test5.svg", format="svg", transparent=True)
+fig.savefig("hamburg_a4_filtered_30m.svg", format="svg", transparent=True)
 plt.close(fig)
 
 print("#### #### ####")
