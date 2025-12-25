@@ -1,7 +1,9 @@
 import osmnx as ox
 from pyproj import Transformer
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
 from matplotlib.patches import Rectangle
+import math
 
 def get_page_layout(paper_format: str, margin_mm: float):
     """
@@ -106,6 +108,38 @@ def get_text_height(fig, text, fontsize):
 
     return bbox.height / fig.bbox.height
 
+def draw_bold_text(fig, x, y, text, *, fontsize, ha, va, color, stroke_distance, paths):
+   
+    offsets = []
+    for r in (0.5 * stroke_distance, stroke_distance, 1.5 * stroke_distance):
+        offsets += [
+            (
+                r * math.cos(2 * math.pi * i / paths),
+                r * math.sin(2 * math.pi * i / paths),
+            )
+            for i in range(paths)
+        ]
+
+    # draw bold strokes
+    for dx, dy in offsets:
+        fig.text(
+            x + dx, y + dy, text,
+            fontsize=fontsize,
+            ha=ha, va=va,
+            color=color,
+        )
+
+    # draw main pass last (sharpens center)
+    fig.text(
+        x, y, text,
+        fontsize=fontsize,
+        ha=ha, va=va,
+        color=color,
+    )
+
+
+
+
 def compute_block_center_delta(
     fig,
     ax,
@@ -165,7 +199,6 @@ def add_map_labels(
     between_factor=0.5,
     coords_override=None,
     coords_color="black",
-    text_backend="mpl",  # "mpl" or "vpype"
     delta_override=None,  # NEW: force identical vertical centering across layers
     canonical_coord_text=None,  # NEW: force identical reserved height across layers
 ):
@@ -176,12 +209,10 @@ def add_map_labels(
     - reserve_* control reserved layout height even if show_* is False
     - delta_override forces the exact same centering shift (for perfect layer alignment)
     - canonical_coord_text ensures reserved coord height is identical across layers
-    - text_backend="vpype" returns mm positions for later vpype rendering
+
     """
     if position not in {"bottom", "top"}:
         raise ValueError("position must be 'bottom' or 'top'")
-    if text_backend not in {"mpl", "vpype"}:
-        raise ValueError("text_backend must be 'mpl' or 'vpype'")
 
     if reserve_city is None:
         reserve_city = show_city
@@ -238,41 +269,26 @@ def add_map_labels(
         y_city += delta
         y_coord += delta
 
-    # --- MPL DRAW ---
-    if text_backend == "mpl":
-        if show_city:
-            fig.text(0.5, y_city, city_text, ha="center", va=va, fontsize=city_fontsize)
+    if show_city:
+        draw_bold_text(
+            fig,
+            0.5, y_city,
+            city_text,
+            fontsize=city_fontsize,
+            ha="center",
+            va=va,
+            color="black",
+            stroke_distance = 0.0006,
+            paths=5
+        )
+
+                    
         if show_coords:
             fig.text(0.5, y_coord, coord_text, ha="center", va=va, fontsize=coord_fontsize, color=coords_color)
+
         return None
 
-    # --- VPYPE RETURN (mm positions, already corrected for SVG coordinate system elsewhere if needed) ---
-    fig_w_in, fig_h_in = fig.get_size_inches()
-    mm_per_in = 25.4
-    fig_w_mm = fig_w_in * mm_per_in
-    fig_h_mm = fig_h_in * mm_per_in
 
-    # Matplotlib y is from bottom; SVG/vpype y is from top -> flip.
-    def yfrac_to_mm_top(y_frac: float) -> float:
-        return fig_h_mm - (y_frac * fig_h_mm)
-
-    # vpype text uses baseline; compensate roughly based on fontsize
-    pt_to_mm = 0.3527777778
-    city_size_mm = city_fontsize * pt_to_mm
-    coord_size_mm = coord_fontsize * pt_to_mm
-
-    def baseline_shift(font_mm: float) -> float:
-        # va is either "top" or "bottom"
-        return (0.85 * font_mm) if va == "top" else (0.15 * font_mm)
-
-    x_mm = 0.5 * fig_w_mm
-    y_city_mm = yfrac_to_mm_top(y_city) + baseline_shift(city_size_mm)
-    y_coord_mm = yfrac_to_mm_top(y_coord) + baseline_shift(coord_size_mm)
-
-    return {
-        "city": {"text": city_text, "x_mm": x_mm, "y_mm": y_city_mm, "fontsize_mm": city_size_mm, "visible": show_city},
-        "coords": {"text": coord_text, "x_mm": x_mm, "y_mm": y_coord_mm, "fontsize_mm": coord_size_mm, "visible": show_coords, "color": coords_color},
-    }
 
 
 
@@ -376,8 +392,7 @@ def export_svg_with_layers(
         padding_factor=padding_factor,
         between_factor=between_factor,
         delta_override=delta,
-        canonical_coord_text=canonical_coord_text,
-        text_backend="mpl",
+        canonical_coord_text=canonical_coord_text
     )
 
     fig_base.patch.set_visible(False)
@@ -420,8 +435,7 @@ def export_svg_with_layers(
             padding_factor=padding_factor,
             between_factor=between_factor,
             delta_override=delta,
-            canonical_coord_text=canonical_coord_text,
-            text_backend="mpl",
+            canonical_coord_text=canonical_coord_text
         )
     else:
         # no marker: still reserve layout so overlay aligns if you later combine
@@ -440,8 +454,7 @@ def export_svg_with_layers(
             padding_factor=padding_factor,
             between_factor=between_factor,
             delta_override=delta,
-            canonical_coord_text=canonical_coord_text,
-            text_backend="mpl",
+            canonical_coord_text=canonical_coord_text
         )
 
     fig_ov.patch.set_visible(False)
@@ -492,8 +505,7 @@ def export_svg_with_layers(
         padding_factor=padding_factor,
         between_factor=between_factor,
         delta_override=delta,
-        canonical_coord_text=canonical_coord_text,
-        text_backend="mpl",
+        canonical_coord_text=canonical_coord_text
     )
 
     fig_all.patch.set_visible(False)
