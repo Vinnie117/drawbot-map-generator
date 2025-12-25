@@ -199,25 +199,42 @@ def add_map_labels(
     between_factor=0.5,
     coords_override=None,
     coords_color="black",
-    delta_override=None,  # NEW: force identical vertical centering across layers
-    canonical_coord_text=None,  # NEW: force identical reserved height across layers
+    # --- from the old version ---
+    delta_override=None,           # force identical vertical centering across layers
+    canonical_coord_text=None,     # force identical reserved coord height across layers
+    # --- new in the current version ---
+    text_backend="mpl",            # "mpl" or "vpype"
+    # --- optional: keep old bold city rendering behavior when using mpl ---
+    city_draw="bold",              # "bold" or "plain"
+    bold_kwargs=None,              # forwarded to draw_bold_text(...)
 ):
     """
-    Add city name (+ optional coordinates) above/below the map.
+    Computes layout for city / coord labels above/below the map.
 
-    - mode="block_centered": shifts ax and labels so (map + reserved labels) are centered
-    - reserve_* control reserved layout height even if show_* is False
+    - mode="block_centered": shifts ax + labels so (map + reserved labels) are centered
+    - reserve_* reserve layout height even if show_* is False
     - delta_override forces the exact same centering shift (for perfect layer alignment)
     - canonical_coord_text ensures reserved coord height is identical across layers
 
+    If text_backend == "mpl":
+        draws text on the figure.
+    If text_backend == "vpype":
+        does NOT draw text, returns layout info (in mm) for vpype_add_hershey_text().
     """
     if position not in {"bottom", "top"}:
         raise ValueError("position must be 'bottom' or 'top'")
+    if text_backend not in {"mpl", "vpype"}:
+        raise ValueError("text_backend must be 'mpl' or 'vpype'")
+    if mode not in {"map_centered", "block_centered"}:
+        raise ValueError("mode must be 'map_centered' or 'block_centered'")
 
     if reserve_city is None:
         reserve_city = show_city
     if reserve_coords is None:
         reserve_coords = show_coords
+
+    if bold_kwargs is None:
+        bold_kwargs = {}
 
     ax_pos = ax.get_position()
     city_text = str(location)
@@ -232,13 +249,19 @@ def add_map_labels(
 
     lat_suffix = "N" if lat >= 0 else "S"
     lon_suffix = "E" if lon >= 0 else "W"
-    coord_text = f"{abs(lat):.{precision}f}° {lat_suffix}, {abs(lon):.{precision}f}° {lon_suffix}"
+    coord_text = (
+        f"{abs(lat):.{precision}f}° {lat_suffix}, "
+        f"{abs(lon):.{precision}f}° {lon_suffix}"
+    )
 
+    # Use canonical text for layout height so multiple layers reserve identical space
     coord_text_for_layout = canonical_coord_text if canonical_coord_text else coord_text
 
     # --- reserved layout heights (figure fraction) ---
     city_h = get_text_height(fig, city_text, city_fontsize) if reserve_city else 0.0
-    coord_h = get_text_height(fig, coord_text_for_layout, coord_fontsize) if reserve_coords else 0.0
+    coord_h = (
+        get_text_height(fig, coord_text_for_layout, coord_fontsize) if reserve_coords else 0.0
+    )
 
     base_h = city_h if city_h > 0 else (coord_h if coord_h > 0 else 0.02)
     padding = base_h * padding_factor
@@ -269,24 +292,98 @@ def add_map_labels(
         y_city += delta
         y_coord += delta
 
-    if show_city:
-        draw_bold_text(
-            fig,
-            0.5, y_city,
-            city_text,
-            fontsize=city_fontsize,
-            ha="center",
-            va=va,
-            color="black",
-            stroke_distance = 0.0006,
-            paths=5
-        )
+    # --- MPL DRAW ---
+    if text_backend == "mpl":
+        if show_city:
+            if city_draw == "bold":
+                # Requires your existing draw_bold_text(fig, x, y, text, ...)
+                draw_bold_text(
+                    fig,
+                    0.5,
+                    y_city,
+                    city_text,
+                    fontsize=city_fontsize,
+                    ha="center",
+                    va=va,
+                    color="black",
+                    **{
+                        # old defaults (can be overridden in bold_kwargs)
+                        "stroke_distance": 0.0006,
+                        "paths": 5,
+                        **bold_kwargs,
+                    },
+                )
+            elif city_draw == "plain":
+                fig.text(0.5, y_city, city_text, ha="center", va=va, fontsize=city_fontsize)
+            else:
+                raise ValueError("city_draw must be 'bold' or 'plain'")
 
-                    
         if show_coords:
-            fig.text(0.5, y_coord, coord_text, ha="center", va=va, fontsize=coord_fontsize, color=coords_color)
+            fig.text(
+                0.5,
+                y_coord,
+                coord_text,
+                ha="center",
+                va=va,
+                fontsize=coord_fontsize,
+                color=coords_color,
+            )
 
         return None
+
+    # --- VPYPE RETURN ---
+    # (return positions in mm; vpype will do the actual text rendering)
+    fig_w_in, fig_h_in = fig.get_size_inches()
+    mm_per_in = 25.4
+    fig_w_mm = fig_w_in * mm_per_in
+    fig_h_mm = fig_h_in * mm_per_in
+
+    def pt_to_mm(pt: float) -> float:
+        return pt * 0.3527777778  # exact
+
+    # Matplotlib y is from bottom; SVG/vpype y is from top => flip it.
+    def mpl_yfrac_to_vpype_mm(y_frac: float) -> float:
+        y_mm_from_bottom = y_frac * fig_h_mm
+        return fig_h_mm - y_mm_from_bottom
+
+    # vpype places text at a baseline; Matplotlib with va="top" uses top edge.
+    # This heuristic shifts baseline down by ~0.85 of font height.
+    def baseline_shift_mm(fontsize_mm: float, va: str) -> float:
+        if va == "top":
+            return 0.85 * fontsize_mm
+        elif va == "bottom":
+            return 0.15 * fontsize_mm
+        return 0.0
+
+    va_city = "top" if position == "bottom" else "bottom"
+    va_coord = va_city
+
+    city_size_mm = pt_to_mm(city_fontsize)
+    coord_size_mm = pt_to_mm(coord_fontsize)
+
+    x_center_mm = 0.5 * fig_w_mm
+
+    y_city_mm = mpl_yfrac_to_vpype_mm(y_city) + baseline_shift_mm(city_size_mm, va_city)
+    y_coord_mm = mpl_yfrac_to_vpype_mm(y_coord) + baseline_shift_mm(coord_size_mm, va_coord)
+
+    return {
+        "city": {
+            "text": city_text,
+            "x_mm": x_center_mm,
+            "y_mm": y_city_mm,
+            "fontsize_mm": city_size_mm,
+            "visible": show_city,
+        },
+        "coords": {
+            "text": coord_text,
+            "x_mm": x_center_mm,
+            "y_mm": y_coord_mm,
+            "fontsize_mm": coord_size_mm,
+            "visible": show_coords,
+            "color": coords_color,
+        }
+    }
+
 
 
 
@@ -327,6 +424,7 @@ def export_svg_with_layers(
     coord_fontsize=12,
     padding_factor=0.3,
     between_factor=0.5,
+    text_backend = None
 ):
     """
     Export three SVGs that overlay perfectly (puzzle-piece alignment):
@@ -418,48 +516,96 @@ def export_svg_with_layers(
 
     # overlay: coords only (city reserved)
     if marker_latlon is not None:
-        add_map_labels(
+
+        #### VPYPE
+        label_layout = add_map_labels(
             fig_ov,
             ax_ov,
             location,
-            mode=mode,
-            position=position,
+            mode="block_centered",
+            position="bottom",
             show_city=True,
             show_coords=False,
-            reserve_city=True,
-            reserve_coords=True,
-            coords_override=marker_latlon,
-            coords_color=marker_color,
-            city_fontsize=city_fontsize,
-            coord_fontsize=coord_fontsize,
-            padding_factor=padding_factor,
-            between_factor=between_factor,
-            delta_override=delta,
-            canonical_coord_text=canonical_coord_text
+            coords_override=marker_latlon,  # show marker coords if present
+            coords_color=marker_color,      # same color as dot
+            text_backend="vpype",           # IMPORTANT
         )
+
+        #### Matplotlib
+        # add_map_labels(
+        #     fig_ov,
+        #     ax_ov,
+        #     location,
+        #     mode=mode,
+        #     position=position,
+        #     show_city=True,
+        #     show_coords=False,
+        #     reserve_city=True,
+        #     reserve_coords=True,
+        #     coords_override=marker_latlon,
+        #     coords_color=marker_color,
+        #     city_fontsize=city_fontsize,
+        #     coord_fontsize=coord_fontsize,
+        #     padding_factor=padding_factor,
+        #     between_factor=between_factor,
+        #     delta_override=delta,
+        #     canonical_coord_text=canonical_coord_text
+        # )
     else:
         # no marker: still reserve layout so overlay aligns if you later combine
-        add_map_labels(
+
+        #### VPYPE
+        label_layout = add_map_labels(
             fig_ov,
             ax_ov,
             location,
-            mode=mode,
-            position=position,
+            mode="block_centered",
+            position="bottom",
             show_city=True,
             show_coords=False,
-            reserve_city=True,
-            reserve_coords=True,
-            city_fontsize=city_fontsize,
-            coord_fontsize=coord_fontsize,
-            padding_factor=padding_factor,
-            between_factor=between_factor,
-            delta_override=delta,
-            canonical_coord_text=canonical_coord_text
+            coords_override=marker_latlon,  # show marker coords if present
+            coords_color=marker_color,      # same color as dot
+            text_backend="vpype",           # IMPORTANT
         )
+
+        #### Matplotlib
+        # add_map_labels(
+        #     fig_ov,
+        #     ax_ov,
+        #     location,
+        #     mode=mode,
+        #     position=position,
+        #     show_city=True,
+        #     show_coords=False,
+        #     reserve_city=True,
+        #     reserve_coords=True,
+        #     city_fontsize=city_fontsize,
+        #     coord_fontsize=coord_fontsize,
+        #     padding_factor=padding_factor,
+        #     between_factor=between_factor,
+        #     delta_override=delta,
+        #     canonical_coord_text=canonical_coord_text
+        # )
 
     fig_ov.patch.set_visible(False)
     ax_ov.patch.set_visible(False)
     fig_ov.savefig(out_overlay, format="svg", transparent=True)
+
+    if text_backend == "vpype":
+
+        vpype_add_hershey_text(
+            out_overlay,
+            "maps/test_vpype.svg",
+            label_layout,
+            font="futural",
+            stroke_distance_mm=0.3,
+            offset_paths=6,
+            offset_rings=(0.0, 0.25, 0.75,1.0),
+            passes=1,
+        )
+
+
+
     plt.close(fig_ov)
 
     # -------------------------
@@ -664,3 +810,127 @@ def crop_view_to_frame(
             ax.set_ylim(ymid - new_yspan / 2, ymid + new_yspan / 2)
 
     ax.margins(0)
+
+    
+import shutil
+import subprocess
+
+
+
+def _circle_offsets_mm(radius_mm: float, paths: int):
+    """Generate (dx, dy) offsets evenly spaced on a circle."""
+    if radius_mm <= 0:
+        return [(0.0, 0.0)]
+    return [
+        (
+            radius_mm * math.cos(2 * math.pi * i / paths),
+            radius_mm * math.sin(2 * math.pi * i / paths),
+        )
+        for i in range(paths)
+    ]
+
+def _make_offsets_mm(
+    stroke_distance_mm: float,
+    paths: int,
+    rings=(0.0, 0.5, 1.0, 1.5),
+    include_center=True,
+):
+    """
+    Create offsets in mm.
+
+    stroke_distance_mm: base radial step in mm
+    paths: number of offsets per ring (angular resolution)
+    rings: multiples of stroke_distance_mm used as radii
+    include_center: ensure (0,0) is included
+    """
+    offsets = []
+    for f in rings:
+        r = f * stroke_distance_mm
+        offsets.extend(_circle_offsets_mm(r, paths))
+
+    if include_center and (0.0, 0.0) not in offsets:
+        offsets.append((0.0, 0.0))
+
+    # De-duplicate (floating tolerance)
+    uniq = []
+    seen = set()
+    for dx, dy in offsets:
+        key = (round(dx, 4), round(dy, 4))  # 0.0001mm tolerance
+        if key not in seen:
+            seen.add(key)
+            uniq.append((dx, dy))
+    return uniq
+
+
+
+def vpype_add_hershey_text(
+    in_svg,
+    out_svg,
+    label_layout,
+    font="futural",
+
+    # NEW: thickness / boldness controls
+    passes=1,                      # multipass count per offset position (darkens)
+    stroke_distance_mm=0.0,         # >0 enables offset boldness (thickens)
+    offset_paths=12,               # number of offsets around each ring
+    offset_rings=(0.0, 1.0),       # radii in multiples of stroke_distance_mm (0.0 means center)
+    layer="new",                   # put text on new layer by default
+):
+    """
+    Add single-stroke (Hershey) text to an SVG using vpype, optionally thickened.
+
+    Two mechanisms:
+      - passes: repeats the exact same geometry N times (darker, not thicker)
+      - offsets: draws the text multiple times with small XY shifts (thicker)
+
+    Recommended starting point for a 0.7mm pen:
+      stroke_distance_mm=0.25 to 0.35
+      offset_paths=12 to 20
+      offset_rings=(0.0, 1.0)  or (0.0, 0.7, 1.0)
+      passes=1 or 2
+    """
+    vpype_cmd = shutil.which("vpype")
+    if vpype_cmd is None:
+        raise RuntimeError("vpype executable not found in PATH")
+
+    cmd = [vpype_cmd, "read", in_svg]
+
+    # Build offsets
+    if stroke_distance_mm and stroke_distance_mm > 0:
+        offsets = _make_offsets_mm(
+            stroke_distance_mm=float(stroke_distance_mm),
+            paths=int(offset_paths),
+            rings=tuple(offset_rings),
+            include_center=True,
+        )
+    else:
+        offsets = [(0.0, 0.0)]  # no thickening, just one placement
+
+    for key in ("city", "coords"):
+        item = label_layout.get(key)
+        if not item or not item.get("visible", False):
+            continue
+
+        text = item["text"]
+        size_mm = float(item["fontsize_mm"])
+        x0 = float(item["x_mm"])
+        y0 = float(item["y_mm"])
+
+        # Draw at each offset
+        for dx, dy in offsets:
+            cmd += [
+                "text",
+                "--layer", layer,
+                "--font", font,
+                "--size", f"{size_mm:.3f}mm",
+                "--align", "center",
+                "--position", f"{(x0 + dx):.3f}mm", f"{(y0 + dy):.3f}mm",
+                text,
+            ]
+
+            # Optional: repeat the same geometry (darker)
+            if passes and int(passes) > 1:
+                cmd += ["multipass", str(int(passes))]
+
+    cmd += ["write", out_svg]
+    subprocess.run(cmd, check=True)

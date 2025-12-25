@@ -1,6 +1,6 @@
 import osmnx as ox
 import matplotlib.pyplot as plt
-from helper_functions import get_page_layout, get_graph, set_map_frame, add_map_labels, filter_short_edges, add_marker, export_svg_with_layers, crop_view_to_frame
+from helper_functions import get_page_layout, get_graph, set_map_frame, add_map_labels, vpype_add_hershey_text, filter_short_edges, add_marker, export_svg_with_layers, crop_view_to_frame
 
 
 # --- SETTINGS ---
@@ -17,6 +17,18 @@ marker_color = "red"
 # --- DOWNLOAD GRAPH ---
 G_raw = get_graph(location, network_type="drive", dist=5000)
 G = filter_short_edges(G_raw, min_length_m=30)
+
+#### suburb
+# location = "Eppendorf, Hamburg, Germany"
+# gdf = ox.geocode_to_gdf(location)
+# poly = gdf.geometry.iloc[0]
+
+# G = ox.graph_from_polygon(
+#     poly,
+#     network_type="drive",   # or "walk", "bike"
+#     simplify=True
+# )
+# G = filter_short_edges(G, min_length_m=0)
 
 
 # --- CREATE FIGURE ---
@@ -45,18 +57,21 @@ ox.plot_graph(
 # )
 
 # Add marker point
-marker_latlon = add_marker(ax, G, point, color=marker_color, size=20)
+#marker_latlon = add_marker(ax, G, point, color=marker_color, size=20)
 
 # --- LABELS (choose layout mode here) ---
 # Map + labels centered, with coordinates
-add_map_labels(
-    fig, ax, location,
+label_layout = add_map_labels(
+    fig,
+    ax,
+    location,
     mode="block_centered",
     position="bottom",
     show_city=True,
     show_coords=False,
-    coords_override=marker_latlon,   # show marker coords if present
-    coords_color=marker_color        # same color as dot
+    coords_override=None,  # show marker coords if present
+    #coords_color=marker_color,      # same color as dot
+    text_backend="vpype",           # IMPORTANT
 )
 
 # or: Map + only city name centered, no coordinates
@@ -73,6 +88,19 @@ set_map_frame(fig, ax, enabled=False, linewidth=1.2, color="black", pad=0.0)
 fig.patch.set_visible(False)   # removes patch_1
 ax.patch.set_visible(False)    # removes patch_2
 fig.savefig("maps/hamburg_a4_filtered_30m.svg", format="svg", transparent=True)
+
+vpype_add_hershey_text(
+    "maps/hamburg_a4_filtered_30m.svg",
+    "maps/hamburg.svg",
+    label_layout,
+    font="futural",
+    stroke_distance_mm=0.3,
+    offset_paths=6,
+    offset_rings=(0.0, 0.33, 0.66, 1.0),
+    passes=1,
+)
+
+
 plt.close(fig)
 
 print("#### #### ####")
@@ -95,6 +123,8 @@ export_svg_with_layers(
     coord_fontsize=12,
     padding_factor=0.3,
     between_factor=0.5,
+
+    text_backend="vpype"
 )
 
 print("END")
