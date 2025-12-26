@@ -2,7 +2,7 @@ from pyaxidraw import axidraw
 
 # Estimate how long the plot will take to draw
 
-file = "maps/hamburg.svg"
+file = "maps/test_vpype_layer.svg"
 print("PLOTTING: " + file)
 
 ad = axidraw.AxiDraw()
