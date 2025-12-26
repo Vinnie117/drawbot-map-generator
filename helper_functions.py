@@ -205,7 +205,7 @@ def add_map_labels(
     # --- new in the current version ---
     text_backend="mpl",            # "mpl" or "vpype"
     # --- optional: keep old bold city rendering behavior when using mpl ---
-    city_draw="bold",              # "bold" or "plain"
+    city_draw="plain",              # "bold" or "plain"
     bold_kwargs=None,              # forwarded to draw_bold_text(...)
 ):
     """
@@ -314,7 +314,15 @@ def add_map_labels(
                     },
                 )
             elif city_draw == "plain":
-                fig.text(0.5, y_city, city_text, ha="center", va=va, fontsize=city_fontsize)
+                fig.text(
+                    0.5,
+                    y_city,
+                    city_text,
+                    ha="center",
+                    va=va,
+                    fontsize=city_fontsize,
+                    fontfamily="Times New Roman",
+                )
             else:
                 raise ValueError("city_draw must be 'bold' or 'plain'")
 
@@ -518,74 +526,80 @@ def export_svg_with_layers(
     if marker_latlon is not None:
 
         #### VPYPE
-        label_layout = add_map_labels(
-            fig_ov,
-            ax_ov,
-            location,
-            mode="block_centered",
-            position="bottom",
-            show_city=True,
-            show_coords=False,
-            coords_override=marker_latlon,  # show marker coords if present
-            coords_color=marker_color,      # same color as dot
-            text_backend="vpype",           # IMPORTANT
-        )
+        if text_backend == "vpype":
+            label_layout = add_map_labels(
+                fig_ov,
+                ax_ov,
+                location,
+                mode="block_centered",
+                position="bottom",
+                show_city=True,
+                show_coords=False,
+                coords_override=marker_latlon,  # show marker coords if present
+                coords_color=marker_color,      # same color as dot
+                text_backend="vpype",           # IMPORTANT
+            )
 
-        #### Matplotlib
-        # add_map_labels(
-        #     fig_ov,
-        #     ax_ov,
-        #     location,
-        #     mode=mode,
-        #     position=position,
-        #     show_city=True,
-        #     show_coords=False,
-        #     reserve_city=True,
-        #     reserve_coords=True,
-        #     coords_override=marker_latlon,
-        #     coords_color=marker_color,
-        #     city_fontsize=city_fontsize,
-        #     coord_fontsize=coord_fontsize,
-        #     padding_factor=padding_factor,
-        #     between_factor=between_factor,
-        #     delta_override=delta,
-        #     canonical_coord_text=canonical_coord_text
-        # )
+        if text_backend == "mpl":
+
+            ### Matplotlib
+            add_map_labels(
+                fig_ov,
+                ax_ov,
+                location,
+                mode=mode,
+                position=position,
+                show_city=True,
+                show_coords=False,
+                reserve_city=True,
+                reserve_coords=True,
+                coords_override=marker_latlon,
+                coords_color=marker_color,
+                city_fontsize=city_fontsize,
+                coord_fontsize=coord_fontsize,
+                padding_factor=padding_factor,
+                between_factor=between_factor,
+                delta_override=delta,
+                canonical_coord_text=canonical_coord_text
+            )
+
     else:
         # no marker: still reserve layout so overlay aligns if you later combine
 
-        #### VPYPE
-        label_layout = add_map_labels(
-            fig_ov,
-            ax_ov,
-            location,
-            mode="block_centered",
-            position="bottom",
-            show_city=True,
-            show_coords=False,
-            coords_override=marker_latlon,  # show marker coords if present
-            coords_color=marker_color,      # same color as dot
-            text_backend="vpype",           # IMPORTANT
-        )
+        if text_backend == "vpype":
+            #### VPYPE
+            label_layout = add_map_labels(
+                fig_ov,
+                ax_ov,
+                location,
+                mode="block_centered",
+                position="bottom",
+                show_city=True,
+                show_coords=False,
+                coords_override=marker_latlon,  # show marker coords if present
+                coords_color=marker_color,      # same color as dot
+                text_backend="vpype",           # IMPORTANT
+            )
 
-        #### Matplotlib
-        # add_map_labels(
-        #     fig_ov,
-        #     ax_ov,
-        #     location,
-        #     mode=mode,
-        #     position=position,
-        #     show_city=True,
-        #     show_coords=False,
-        #     reserve_city=True,
-        #     reserve_coords=True,
-        #     city_fontsize=city_fontsize,
-        #     coord_fontsize=coord_fontsize,
-        #     padding_factor=padding_factor,
-        #     between_factor=between_factor,
-        #     delta_override=delta,
-        #     canonical_coord_text=canonical_coord_text
-        # )
+        if text_backend == "mpl":
+            ### Matplotlib
+            add_map_labels(
+                fig_ov,
+                ax_ov,
+                location,
+                mode=mode,
+                position=position,
+                show_city=True,
+                show_coords=False,
+                reserve_city=True,
+                reserve_coords=True,
+                city_fontsize=city_fontsize,
+                coord_fontsize=coord_fontsize,
+                padding_factor=padding_factor,
+                between_factor=between_factor,
+                delta_override=delta,
+                canonical_coord_text=canonical_coord_text
+            )
 
     fig_ov.patch.set_visible(False)
     ax_ov.patch.set_visible(False)
@@ -595,12 +609,12 @@ def export_svg_with_layers(
 
         vpype_add_hershey_text(
             out_overlay,
-            "maps/test_vpype.svg",
+            "maps/test_vpype_layer.svg",
             label_layout,
-            font="futural",
+            font="timesr",
             stroke_distance_mm=0.3,
-            offset_paths=6,
-            offset_rings=(0.0, 0.25, 0.75,1.0),
+            offset_paths=4,                  # number of directions away from the center
+            offset_rings=(0.0, 0.33, 0.66, 1.0),    # how many layer to draw in what distance (multiplied with distance)
             passes=1,
         )
 

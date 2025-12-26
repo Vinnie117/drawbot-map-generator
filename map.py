@@ -7,7 +7,7 @@ from helper_functions import get_page_layout, get_graph, set_map_frame, add_map_
 ox.settings.use_cache = True
 ox.settings.log_console = True
 
-location = "Hamburg, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
+location = "Koeln, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
 fig_w, fig_h, rect = get_page_layout("a4", 20)
 
 # Example point (Brandenburger Tor)
@@ -87,13 +87,13 @@ set_map_frame(fig, ax, enabled=False, linewidth=1.2, color="black", pad=0.0)
 
 fig.patch.set_visible(False)   # removes patch_1
 ax.patch.set_visible(False)    # removes patch_2
-fig.savefig("maps/hamburg_a4_filtered_30m.svg", format="svg", transparent=True)
+fig.savefig("maps/koeln_a4_filtered_30m.svg", format="svg", transparent=True)
 
 vpype_add_hershey_text(
-    "maps/hamburg_a4_filtered_30m.svg",
-    "maps/hamburg.svg",
+    "maps/koeln_a4_filtered_30m.svg",
+    "maps/koeln.svg",
     label_layout,
-    font="futural",
+    font="timesr",
     stroke_distance_mm=0.3,
     offset_paths=6,
     offset_rings=(0.0, 0.33, 0.66, 1.0),
@@ -115,16 +115,16 @@ export_svg_with_layers(
     mode="block_centered",
     position="bottom",
 
-    out_base="maps/hamburg_base.svg",
-    out_overlay="maps/hamburg_overlay.svg",
-    out_combined="maps/hamburg_combined.svg",
+    out_base="maps/koeln_base.svg",
+    out_overlay="maps/koeln_overlay.svg",
+    out_combined="maps/koeln_combined.svg",
 
     city_fontsize=20,
     coord_fontsize=12,
     padding_factor=0.3,
     between_factor=0.5,
 
-    text_backend="vpype"
+    text_backend="vpype"  # "vpype" or "mpl"
 )
 
 print("END")
