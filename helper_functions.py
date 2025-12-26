@@ -207,6 +207,7 @@ def add_map_labels(
     # --- optional: keep old bold city rendering behavior when using mpl ---
     city_draw="plain",              # "bold" or "plain"
     bold_kwargs=None,              # forwarded to draw_bold_text(...)
+    multipass=5     # draw same label N times at identical position
 ):
     """
     Computes layout for city / coord labels above/below the map.
@@ -598,7 +599,8 @@ def export_svg_with_layers(
                 padding_factor=padding_factor,
                 between_factor=between_factor,
                 delta_override=delta,
-                canonical_coord_text=canonical_coord_text
+                canonical_coord_text=canonical_coord_text,
+                multipass=5
             )
 
     fig_ov.patch.set_visible(False)

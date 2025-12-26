@@ -7,7 +7,7 @@ from helper_functions import get_page_layout, get_graph, set_map_frame, add_map_
 ox.settings.use_cache = True
 ox.settings.log_console = True
 
-location = "Koeln, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
+location = "Köln, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
 fig_w, fig_h, rect = get_page_layout("a4", 20)
 
 # Example point (Brandenburger Tor)
@@ -61,7 +61,7 @@ ox.plot_graph(
 
 # --- LABELS (choose layout mode here) ---
 # Map + labels centered, with coordinates
-label_layout = add_map_labels(
+add_map_labels(
     fig,
     ax,
     location,
@@ -71,7 +71,7 @@ label_layout = add_map_labels(
     show_coords=False,
     coords_override=None,  # show marker coords if present
     #coords_color=marker_color,      # same color as dot
-    text_backend="vpype",           # IMPORTANT
+    text_backend="mpl",           # IMPORTANT
 )
 
 # or: Map + only city name centered, no coordinates
@@ -89,16 +89,17 @@ fig.patch.set_visible(False)   # removes patch_1
 ax.patch.set_visible(False)    # removes patch_2
 fig.savefig("maps/koeln_a4_filtered_30m.svg", format="svg", transparent=True)
 
-vpype_add_hershey_text(
-    "maps/koeln_a4_filtered_30m.svg",
-    "maps/koeln.svg",
-    label_layout,
-    font="timesr",
-    stroke_distance_mm=0.3,
-    offset_paths=6,
-    offset_rings=(0.0, 0.33, 0.66, 1.0),
-    passes=1,
-)
+#### this command needs a return object (label_layout) from add_map_labels()
+# vpype_add_hershey_text(
+#     "maps/koeln_a4_filtered_30m.svg",
+#     "maps/koeln.svg",
+#     label_layout,
+#     font="timesr",
+#     stroke_distance_mm=0.3,
+#     offset_paths=6,
+#     offset_rings=(0.0, 0.33, 0.66, 1.0),
+#     passes=1,
+# )
 
 
 plt.close(fig)
@@ -124,7 +125,7 @@ export_svg_with_layers(
     padding_factor=0.3,
     between_factor=0.5,
 
-    text_backend="vpype"  # "vpype" or "mpl"
+    text_backend="mpl"  # "vpype" or "mpl"
 )
 
 print("END")
