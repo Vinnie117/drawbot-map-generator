@@ -5,6 +5,16 @@ import matplotlib.patheffects as pe
 from matplotlib.patches import Rectangle
 import math
 
+import numpy as np
+from matplotlib.textpath import TextPath
+from matplotlib.font_manager import FontProperties
+from matplotlib.path import Path
+from matplotlib.patches import PathPatch
+from matplotlib.transforms import Affine2D
+
+from shapely.geometry import Polygon, LineString, MultiLineString, GeometryCollection
+from shapely.ops import unary_union
+
 def get_page_layout(paper_format: str, margin_mm: float):
     """
     Compute figure size (in inches) and axes rectangle for centered plotting
@@ -207,7 +217,15 @@ def add_map_labels(
     # --- optional: keep old bold city rendering behavior when using mpl ---
     city_draw="plain",              # "bold" or "plain"
     bold_kwargs=None,              # forwarded to draw_bold_text(...)
-    multipass=5     # draw same label N times at identical position
+    multipass=5,     # draw same label N times at identical position
+
+    hatch_city=False,
+    hatch_coords=False,
+    hatch_spacing_mm=0.6,
+    hatch_angle_deg=20.0,
+    hatch_outline=True,
+    hatch_outline_lw=0.6,
+    hatch_lw=0.35,
 ):
     """
     Computes layout for city / coord labels above/below the map.
@@ -293,51 +311,73 @@ def add_map_labels(
         y_city += delta
         y_coord += delta
 
-    # --- MPL DRAW ---
+ # --- MPL DRAW ---
     if text_backend == "mpl":
         if show_city:
-            if city_draw == "bold":
-                # Requires your existing draw_bold_text(fig, x, y, text, ...)
+            if city_draw == "bold" and not hatch_city:
                 draw_bold_text(
-                    fig,
-                    0.5,
-                    y_city,
-                    city_text,
+                    fig, 0.5, y_city, city_text,
                     fontsize=city_fontsize,
-                    ha="center",
-                    va=va,
+                    ha="center", va=va,
                     color="black",
-                    **{
-                        # old defaults (can be overridden in bold_kwargs)
-                        "stroke_distance": 0.0006,
-                        "paths": 5,
-                        **bold_kwargs,
-                    },
+                    **{"stroke_distance": 0.0006, "paths": 5, **bold_kwargs},
                 )
-            elif city_draw == "plain":
-                for _ in range(int(multipass)):
-                    fig.text(
-                        0.5,
-                        y_city,
+
+            else:
+                # hatch or plain multipass normal text
+                if hatch_city:
+                    fig_hatch_filled_text(
+                        fig,
+                        0.5, y_city,
                         city_text,
+                        fontsize_pt=city_fontsize,
+                        fontfamily="Times New Roman",
                         ha="center",
                         va=va,
-                        fontsize=city_fontsize,
-                        fontfamily="Times New Roman",
+                        angle_deg=hatch_angle_deg,
+                        spacing_mm=hatch_spacing_mm,
+                        outline=hatch_outline,
+                        outline_lw=hatch_outline_lw,
+                        hatch_lw=hatch_lw,
+                        color="black",
+                        zorder=1000,
                     )
-            else:
-                raise ValueError("city_draw must be 'bold' or 'plain'")
+                else:
+                    for _ in range(int(multipass)):
+                        fig.text(
+                            0.5, y_city, city_text,
+                            ha="center", va=va,
+                            fontsize=city_fontsize,
+                            fontfamily="Times New Roman",
+                            color="black",
+                        )
 
         if show_coords:
-            fig.text(
-                0.5,
-                y_coord,
-                coord_text,
-                ha="center",
-                va=va,
-                fontsize=coord_fontsize,
-                color=coords_color,
-            )
+            if hatch_coords:
+                fig_hatch_filled_text(
+                    fig,
+                    0.5, y_coord,
+                    coord_text,
+                    fontsize_pt=coord_fontsize,
+                    fontfamily="Times New Roman",
+                    ha="center",
+                    va=va,
+                    angle_deg=hatch_angle_deg,
+                    spacing_mm=max(0.35, hatch_spacing_mm * 0.85),
+                    outline=False,                 # coords usually cleaner without outline
+                    outline_lw=hatch_outline_lw,
+                    hatch_lw=max(0.25, hatch_lw * 0.9),
+                    color=coords_color,
+                    zorder=1000,
+                )
+            else:
+                fig.text(
+                    0.5, y_coord, coord_text,
+                    ha="center", va=va,
+                    fontsize=coord_fontsize,
+                    color=coords_color,
+                    fontfamily="Times New Roman",
+                )
 
         return None
 
@@ -434,7 +474,8 @@ def export_svg_with_layers(
     coord_fontsize=12,
     padding_factor=0.3,
     between_factor=0.5,
-    text_backend = None
+    text_backend = None,
+    multipass=1
 ):
     """
     Export three SVGs that overlay perfectly (puzzle-piece alignment):
@@ -545,25 +586,20 @@ def export_svg_with_layers(
         if text_backend == "mpl":
 
             ### Matplotlib
-            add_map_labels(
-                fig_ov,
-                ax_ov,
-                location,
-                mode=mode,
-                position=position,
-                show_city=True,
-                show_coords=False,
-                reserve_city=True,
-                reserve_coords=True,
-                coords_override=marker_latlon,
-                coords_color=marker_color,
-                city_fontsize=city_fontsize,
-                coord_fontsize=coord_fontsize,
-                padding_factor=padding_factor,
-                between_factor=between_factor,
-                delta_override=delta,
-                canonical_coord_text=canonical_coord_text
-            )
+            for _ in range(int(multipass)):
+                add_map_labels(
+                    fig_ov, ax_ov, "Berlin",
+                    text_backend="mpl",
+                    city_draw="plain",
+                    show_coords=False,
+                    hatch_city=True,
+                    hatch_coords=False,        # I'd keep coords normal unless you really need “filled”
+                    hatch_spacing_mm=0.3,
+                    hatch_angle_deg=25,
+                    hatch_outline=True,
+                    hatch_outline_lw=0.5,
+                    hatch_lw=0.30,
+                )
 
     else:
         # no marker: still reserve layout so overlay aligns if you later combine
@@ -586,22 +622,16 @@ def export_svg_with_layers(
         if text_backend == "mpl":
             ### Matplotlib
             add_map_labels(
-                fig_ov,
-                ax_ov,
-                location,
-                mode=mode,
-                position=position,
-                show_city=True,
-                show_coords=False,
-                reserve_city=True,
-                reserve_coords=True,
-                city_fontsize=city_fontsize,
-                coord_fontsize=coord_fontsize,
-                padding_factor=padding_factor,
-                between_factor=between_factor,
-                delta_override=delta,
-                canonical_coord_text=canonical_coord_text,
-                multipass=5
+                fig_ov, ax_ov, "Berlin Bla Blubb",
+                text_backend="mpl",
+                city_draw="plain",
+                hatch_city=True,
+                hatch_coords=False,        # I'd keep coords normal unless you really need “filled”
+                hatch_spacing_mm=0.55,
+                hatch_angle_deg=25,
+                hatch_outline=True,
+                hatch_outline_lw=0.5,
+                hatch_lw=0.30,
             )
 
     fig_ov.patch.set_visible(False)
@@ -951,3 +981,199 @@ def vpype_add_hershey_text(
 
     cmd += ["write", out_svg]
     subprocess.run(cmd, check=True)
+
+
+
+
+def _compound_textpath_to_shapely(tp: TextPath):
+
+    """
+    Robust conversion preserving holes:
+    Uses tp.to_polygons() rings and assigns them as shells/holes by containment depth.
+    """
+    rings = tp.to_polygons(closed_only=True)
+    clean = []
+    for r in rings:
+        if r.shape[0] < 4:
+            continue
+        if not np.allclose(r[0], r[-1]):
+            r = np.vstack([r, r[0]])
+        clean.append(r)
+
+    if not clean:
+        return None
+
+    ring_polys = [Polygon(r[:-1]) for r in clean]
+    reps = [p.representative_point() for p in ring_polys]
+
+    # containment depth per ring
+    depth = []
+    for i, p in enumerate(ring_polys):
+        d = 0
+        for j, q in enumerate(ring_polys):
+            if i != j and q.contains(reps[i]):
+                d += 1
+        depth.append(d)
+
+    outers = [i for i, d in enumerate(depth) if d % 2 == 0]
+    built = []
+
+    for oi in outers:
+        shell = clean[oi][:-1]
+        holes = []
+        for hi, d in enumerate(depth):
+            if hi == oi:
+                continue
+            if d % 2 == 1 and ring_polys[oi].contains(reps[hi]):
+                holes.append(clean[hi][:-1])
+        poly = Polygon(shell, holes=holes)
+        if not poly.is_empty and poly.area > 0:
+            built.append(poly)
+
+    if not built:
+        return None
+
+    return unary_union(built)
+
+
+def fig_hatch_filled_text(
+    fig,
+    x_fig, y_fig,
+    text,
+    *,
+    fontsize_pt=28,
+    fontfamily="Times New Roman",
+    ha="center",
+    va="top",
+    angle_deg=20.0,
+    spacing_mm=0.6,
+    outline=True,
+    outline_lw=0.6,
+    hatch_lw=0.35,
+    color="black",
+    zorder=1000,
+):
+    """
+    Draw hatch-filled text at figure-fraction coordinates (like fig.text),
+    using stroke lines clipped to glyph polygons.
+    """
+    fp = FontProperties(family=fontfamily)
+    tp = TextPath((0, 0), text, size=fontsize_pt, prop=fp)
+
+    # Anchor alignment in *point* space
+    bb = tp.get_extents()
+    w, h = bb.width, bb.height
+
+    if ha == "center":
+        shift_x = -(bb.x0 + w / 2.0)
+    elif ha == "right":
+        shift_x = -(bb.x0 + w)
+    else:
+        shift_x = -bb.x0
+
+    if va == "center":
+        shift_y = -(bb.y0 + h / 2.0)
+    elif va == "top":
+        shift_y = -(bb.y0 + h)
+    elif va == "bottom":
+        shift_y = -bb.y0
+    else:
+        shift_y = 0.0
+
+    tp_aligned = Affine2D().translate(shift_x, shift_y).transform_path(tp)
+
+    poly = _compound_textpath_to_shapely(tp_aligned)
+    if poly is None or poly.is_empty:
+        return
+
+    # Hatch spacing in points
+    spacing_pt = spacing_mm * 72.0 / 25.4
+
+    # Build hatch lines in point coords
+    ang = np.deg2rad(angle_deg)
+    ca, sa = np.cos(ang), np.sin(ang)
+    rot = np.array([[ca, -sa], [sa, ca]])
+    invrot = np.array([[ca, sa], [-sa, ca]])  # inverse
+
+    minx, miny, maxx, maxy = poly.bounds
+    size = max(maxx - minx, maxy - miny)
+    pad = 0.75 * size
+    minx2, miny2, maxx2, maxy2 = minx - pad, miny - pad, maxx + pad, maxy + pad
+
+    corners = np.array([[minx2, miny2], [minx2, maxy2], [maxx2, miny2], [maxx2, maxy2]])
+    corners_r = corners @ rot.T
+    ymin_r, ymax_r = corners_r[:, 1].min(), corners_r[:, 1].max()
+    xmin_r, xmax_r = corners_r[:, 0].min(), corners_r[:, 0].max()
+
+    ys = np.arange(ymin_r - spacing_pt, ymax_r + spacing_pt, spacing_pt)
+
+    segments = []
+    for y in ys:
+        p1 = np.array([xmin_r - pad, y]) @ invrot.T
+        p2 = np.array([xmax_r + pad, y]) @ invrot.T
+        line = LineString([tuple(p1), tuple(p2)])
+        inter = poly.intersection(line)
+
+        if inter.is_empty:
+            continue
+        if isinstance(inter, LineString):
+            segments.append(inter)
+        elif isinstance(inter, MultiLineString):
+            segments.extend(list(inter.geoms))
+        elif isinstance(inter, GeometryCollection):
+            for g in inter.geoms:
+                if isinstance(g, LineString) and not g.is_empty:
+                    segments.append(g)
+
+    # Convert segments -> Matplotlib Path in point coords
+    verts, codes = [], []
+    for seg in segments:
+        coords = np.asarray(seg.coords)
+        if coords.shape[0] < 2:
+            continue
+        verts.append((coords[0, 0], coords[0, 1]))
+        codes.append(Path.MOVETO)
+        for k in range(1, coords.shape[0]):
+            verts.append((coords[k, 0], coords[k, 1]))
+            codes.append(Path.LINETO)
+
+    if not verts:
+        return
+
+    hatch_path = Path(verts, codes)
+
+    # points -> figure fraction + placement
+    fig_w_in, fig_h_in = fig.get_size_inches()
+    sx = 1.0 / (72.0 * fig_w_in)
+    sy = 1.0 / (72.0 * fig_h_in)
+
+    tr = Affine2D().scale(sx, sy).translate(x_fig, y_fig) + fig.transFigure
+
+    hatch_patch = PathPatch(
+        hatch_path,
+        transform=tr,
+        facecolor="none",
+        edgecolor=color,
+        lw=hatch_lw,
+        capstyle="round",
+        joinstyle="round",
+        zorder=zorder,
+    )
+    hatch_patch.set_clip_on(False)
+    hatch_patch.set_in_layout(True)
+    fig.add_artist(hatch_patch)
+
+    if outline:
+        outline_patch = PathPatch(
+            tp_aligned,
+            transform=tr,
+            facecolor="none",
+            edgecolor=color,
+            lw=outline_lw,
+            capstyle="round",
+            joinstyle="round",
+            zorder=zorder + 1,
+        )
+        outline_patch.set_clip_on(False)
+        outline_patch.set_in_layout(True)
+        fig.add_artist(outline_patch)

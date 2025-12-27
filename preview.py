@@ -2,7 +2,7 @@ from pyaxidraw import axidraw
 
 # Estimate how long the plot will take to draw
 
-file = "maps/koeln_a4_filtered_30m.svg"
+file = "maps/koeln_overlay.svg"
 print("PLOTTING: " + file)
 
 ad = axidraw.AxiDraw()
