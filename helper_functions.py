@@ -315,15 +315,16 @@ def add_map_labels(
                     },
                 )
             elif city_draw == "plain":
-                fig.text(
-                    0.5,
-                    y_city,
-                    city_text,
-                    ha="center",
-                    va=va,
-                    fontsize=city_fontsize,
-                    fontfamily="Times New Roman",
-                )
+                for _ in range(int(multipass)):
+                    fig.text(
+                        0.5,
+                        y_city,
+                        city_text,
+                        ha="center",
+                        va=va,
+                        fontsize=city_fontsize,
+                        fontfamily="Times New Roman",
+                    )
             else:
                 raise ValueError("city_draw must be 'bold' or 'plain'")
 

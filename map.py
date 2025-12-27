@@ -72,6 +72,8 @@ add_map_labels(
     coords_override=None,  # show marker coords if present
     #coords_color=marker_color,      # same color as dot
     text_backend="mpl",           # IMPORTANT
+    multipass=5,
+    city_draw="plain"
 )
 
 # or: Map + only city name centered, no coordinates
