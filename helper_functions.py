@@ -25,6 +25,7 @@ def add_map_labels(
     between_factor=0.5,
     coords_override=None,
     coords_color="black",
+    color="black",
     # --- from the old version ---
     delta_override=None,           # force identical vertical centering across layers
     canonical_coord_text=None,     # force identical reserved coord height across layers
@@ -142,20 +143,21 @@ def add_map_labels(
             else:
                 # hatch or plain multipass normal text
                 if hatch_city:
-                    fig_contour_filled_text(
-                        fig,
-                        0.5, y_city,
-                        city_text,
-                        fontsize_pt=city_fontsize,
-                        fontfamily="Times New Roman",
-                        ha="center",
-                        va=va,
-                        step_mm=0.05,     # smaller = denser contours
-                        lw=0.30,
-                        outline=True,
-                        outline_lw=0.50,
-                        color="red",
-                    )
+                    for _ in range(int(passes)):
+                        fig_contour_filled_text(
+                            fig,
+                            0.5, y_city,
+                            city_text,
+                            fontsize_pt=city_fontsize,
+                            fontfamily="Times New Roman",
+                            ha="center",
+                            va=va,
+                            step_mm=0.05,     # smaller = denser contours
+                            lw=0.30,
+                            outline=True,
+                            outline_lw=0.50,
+                            color=color,
+                        )
 
                     # fig_hatch_filled_text(
                     #     fig,
@@ -396,20 +398,31 @@ def export_svg_with_layers(
         if text_backend == "mpl":
 
             ### Matplotlib
-            for _ in range(int(multipass)):
-                add_map_labels(
-                    fig_ov, ax_ov, "Berlin",
-                    text_backend="mpl",
-                    city_draw="plain",
-                    show_coords=False,
-                    hatch_city=True,
-                    hatch_coords=False,        # I'd keep coords normal unless you really need “filled”
-                    hatch_spacing_mm=0.3,
-                    hatch_angle_deg=25,
-                    hatch_outline=True,
-                    hatch_outline_lw=0.5,
-                    hatch_lw=0.30,
-                )
+            add_map_labels(
+                fig_ov, ax_ov, location,
+                mode=mode,
+                position=position,
+                text_backend="mpl",
+                delta_override=delta,
+                reserve_city=True,
+                reserve_coords=True,
+                canonical_coord_text=canonical_coord_text,
+
+                show_city=True,
+                show_coords=False,
+                color="green",
+
+                hatch_city=True,
+                hatch_coords=False,
+                hatch_spacing_mm=0.3,
+                hatch_angle_deg=25,
+                hatch_outline=True,
+                hatch_outline_lw=0.5,
+                hatch_lw=0.30,
+
+                passes=multipass
+            )
+
 
     else:
         # no marker: still reserve layout so overlay aligns if you later combine
@@ -432,17 +445,30 @@ def export_svg_with_layers(
         if text_backend == "mpl":
             ### Matplotlib
             add_map_labels(
-                fig_ov, ax_ov, "Berlin",
+                fig_ov, ax_ov, location,
+                mode=mode,
+                position=position,
                 text_backend="mpl",
-                city_draw="plain",
+                delta_override=delta,
+                reserve_city=True,
+                reserve_coords=True,
+                canonical_coord_text=canonical_coord_text,
+
+                show_city=True,
+                show_coords=False,
+                color="red",
+
                 hatch_city=True,
-                hatch_coords=False,        # I'd keep coords normal unless you really need “filled”
-                hatch_spacing_mm=0.55,
+                hatch_coords=False,
+                hatch_spacing_mm=0.3,
                 hatch_angle_deg=25,
                 hatch_outline=True,
                 hatch_outline_lw=0.5,
                 hatch_lw=0.30,
+
+                passes=multipass
             )
+
 
     fig_ov.patch.set_visible(False)
     ax_ov.patch.set_visible(False)
