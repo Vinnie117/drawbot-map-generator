@@ -232,49 +232,42 @@ def fig_hatch_filled_text(
         fig.add_artist(outline_patch)
 
 
-def _compound_textpath_to_shapely_contours(tp_path):
-    """Convert a Matplotlib Path (already aligned) into Shapely polygon(s), preserving holes."""
+def _textpath_to_shapely_evenodd(tp_path):
+    """
+    Convert a Matplotlib Path (aligned TextPath) to Shapely geometry using
+    an even-odd fill rule (XOR / symmetric_difference). This preserves holes
+    reliably for tricky glyphs like 'a', 'e', 'g', etc.
+    """
     rings = tp_path.to_polygons(closed_only=True)
 
-    clean = []
+    geom = None
     for r in rings:
         if r.shape[0] < 4:
             continue
         if not np.allclose(r[0], r[-1]):
             r = np.vstack([r, r[0]])
-        clean.append(r)
 
-    if not clean:
+        poly = Polygon(r[:-1])
+        if poly.is_empty:
+            continue
+
+        # Fix occasional invalid rings from font outlines
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+
+        if poly.is_empty:
+            continue
+
+        geom = poly if geom is None else geom.symmetric_difference(poly)
+
+    if geom is None or geom.is_empty:
         return None
 
-    ring_polys = [Polygon(r[:-1]) for r in clean]
-    reps = [p.representative_point() for p in ring_polys]
+    # Optional cleanup
+    if not geom.is_valid:
+        geom = geom.buffer(0)
 
-    depth = []
-    for i in range(len(ring_polys)):
-        d = 0
-        for j in range(len(ring_polys)):
-            if i != j and ring_polys[j].contains(reps[i]):
-                d += 1
-        depth.append(d)
-
-    outers = [i for i, d in enumerate(depth) if d % 2 == 0]
-    built = []
-    for oi in outers:
-        shell = clean[oi][:-1]
-        holes = []
-        for hi, d in enumerate(depth):
-            if hi == oi:
-                continue
-            if d % 2 == 1 and ring_polys[oi].contains(reps[hi]):
-                holes.append(clean[hi][:-1])
-        poly = Polygon(shell, holes=holes)
-        if not poly.is_empty and poly.area > 0:
-            built.append(poly)
-
-    if not built:
-        return None
-    return unary_union(built)
+    return geom
 
 
 def _shapely_lines_to_mpl_path(geom):
@@ -358,7 +351,7 @@ def fig_contour_filled_text(
     tp_aligned = Affine2D().translate(shift_x, shift_y).transform_path(tp)
 
     # 3) Convert to shapely polygon(s)
-    poly = _compound_textpath_to_shapely_contours(tp_aligned)
+    poly = _textpath_to_shapely_evenodd(tp_aligned)
     if poly is None or poly.is_empty:
         return
 
