@@ -33,7 +33,7 @@ def add_map_labels(
     # --- optional: keep old bold city rendering behavior when using mpl ---
     city_draw="plain",              # "bold" or "plain"
     bold_kwargs=None,              # forwarded to draw_bold_text(...)
-    passes=5,     # draw same label N times at identical position
+    passes=1,     # draw same label N times at identical position
 
     hatch_city=False,
     hatch_coords=False,

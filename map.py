@@ -76,7 +76,7 @@ add_map_labels(
     coords_override=None,  # show marker coords if present
     #coords_color=marker_color,      # same color as dot
     text_backend="mpl",           # IMPORTANT
-    passes=5,
+    passes=1,
     city_draw="plain"
 )
 
@@ -130,7 +130,7 @@ export_svg_with_layers(
     coord_fontsize=12,
     padding_factor=0.3,
     between_factor=0.5,
-    multipass = 2,
+    multipass = 1,
     text_backend="mpl"  # "vpype" or "mpl"
 )
 
