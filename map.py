@@ -1,6 +1,10 @@
 import osmnx as ox
 import matplotlib.pyplot as plt
-from helper_functions import get_page_layout, get_graph, set_map_frame, add_map_labels, vpype_add_hershey_text, filter_short_edges, add_marker, export_svg_with_layers, crop_view_to_frame
+from src.frame import crop_view_to_frame, set_map_frame
+from helper_functions import add_map_labels, export_svg_with_layers
+from letters.vpype import vpype_add_hershey_text
+from src.layout import get_page_layout
+from src.location import get_graph, add_marker, filter_short_edges
 
 
 # --- SETTINGS ---
