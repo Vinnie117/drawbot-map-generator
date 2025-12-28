@@ -33,7 +33,7 @@ def add_map_labels(
     # --- optional: keep old bold city rendering behavior when using mpl ---
     city_draw="plain",              # "bold" or "plain"
     bold_kwargs=None,              # forwarded to draw_bold_text(...)
-    multipass=5,     # draw same label N times at identical position
+    passes=5,     # draw same label N times at identical position
 
     hatch_city=False,
     hatch_coords=False,
@@ -175,7 +175,7 @@ def add_map_labels(
                     # )
 
                 else:
-                    for _ in range(int(multipass)):
+                    for _ in range(int(passes)):
                         fig.text(
                             0.5, y_city, city_text,
                             ha="center", va=va,
@@ -432,7 +432,7 @@ def export_svg_with_layers(
         if text_backend == "mpl":
             ### Matplotlib
             add_map_labels(
-                fig_ov, ax_ov, "Berlin Bla Blubb",
+                fig_ov, ax_ov, "Berlin",
                 text_backend="mpl",
                 city_draw="plain",
                 hatch_city=True,

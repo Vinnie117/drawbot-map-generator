@@ -11,7 +11,7 @@ from src.location import get_graph, add_marker, filter_short_edges
 ox.settings.use_cache = True
 ox.settings.log_console = True
 
-location = "Köln, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
+location = "Berlin, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
 fig_w, fig_h, rect = get_page_layout("a4", 20)
 
 # Example point (Brandenburger Tor)
@@ -76,7 +76,7 @@ add_map_labels(
     coords_override=None,  # show marker coords if present
     #coords_color=marker_color,      # same color as dot
     text_backend="mpl",           # IMPORTANT
-    multipass=5,
+    passes=5,
     city_draw="plain"
 )
 
@@ -116,7 +116,7 @@ export_svg_with_layers(
     G=G,
     location=location,
     page_layout=(fig_w, fig_h, rect),
-    point=point,                     # set to None if no marker
+    point=None,                     # set to None if no marker
     marker_color=marker_color,
     marker_size=20,
     mode="block_centered",
