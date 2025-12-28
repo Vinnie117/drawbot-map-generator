@@ -1,12 +1,12 @@
 import osmnx as ox
 import matplotlib.pyplot as plt
 
-from layout import compute_block_center_delta, get_text_height
-from letters.styling import fig_hatch_filled_text
-from letters.styling import fig_contour_filled_text
-from letters.styling import draw_bold_text
-from letters.vpype import vpype_add_hershey_text
-from location import add_marker
+from src.layout import compute_block_center_delta, get_text_height
+from src.letters.styling import fig_hatch_filled_text
+from src.letters.styling import fig_contour_filled_text
+from src.letters.styling import draw_bold_text
+from src.letters.vpype import vpype_add_hershey_text
+from src.location import add_marker
 from src.location import get_location_coordinates
 
 def add_map_labels(
