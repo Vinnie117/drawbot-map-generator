@@ -130,7 +130,7 @@ export_svg_with_layers(
     coord_fontsize=12,
     padding_factor=0.3,
     between_factor=0.5,
-    multipass = 1,
+    multipass = 2,
     text_backend="mpl"  # "vpype" or "mpl"
 )
 
