@@ -534,7 +534,15 @@ def export_svg_with_layers(
         padding_factor=padding_factor,
         between_factor=between_factor,
         delta_override=delta,
-        canonical_coord_text=canonical_coord_text
+        canonical_coord_text=canonical_coord_text,
+        hatch_city=True,
+        hatch_coords=False,
+        hatch_spacing_mm=0.3,
+        hatch_angle_deg=25,
+        hatch_outline=True,
+        hatch_outline_lw=0.5,
+        hatch_lw=0.30,
+        passes=multipass
     )
 
     fig_all.patch.set_visible(False)

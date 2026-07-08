@@ -11,7 +11,7 @@ from src.location import get_graph, add_marker, filter_short_edges
 ox.settings.use_cache = True
 ox.settings.log_console = True
 
-location = "Berlin, Germany"  # "Berlin, Germany"  # or (52.52, 13.405)
+location = "Köln"  # "Berlin, Germany"  # or (52.52, 13.405)
 fig_w, fig_h, rect = get_page_layout("a4", 20)
 
 # Example point (Brandenburger Tor)
@@ -76,8 +76,15 @@ add_map_labels(
     coords_override=None,  # show marker coords if present
     #coords_color=marker_color,      # same color as dot
     text_backend="mpl",           # IMPORTANT
-    passes=1,
-    city_draw="plain"
+    passes=2,
+    city_draw="plain",
+    hatch_city=True,
+    hatch_coords=False,
+    hatch_spacing_mm=0.3,
+    hatch_angle_deg=25,
+    hatch_outline=True,
+    hatch_outline_lw=0.5,
+    hatch_lw=0.30,
 )
 
 # or: Map + only city name centered, no coordinates
