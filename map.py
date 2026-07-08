@@ -11,8 +11,10 @@ from src.location import get_graph, add_marker, filter_short_edges
 ox.settings.use_cache = True
 ox.settings.log_console = True
 
+FORMAT = "a3"
+
 location = "Köln"  # "Berlin, Germany"  # or (52.52, 13.405)
-fig_w, fig_h, rect = get_page_layout("a4", 20)
+fig_w, fig_h, rect = get_page_layout(FORMAT, 30)
 
 # Example point (Brandenburger Tor)
 point = (52.516275, 13.377704)
@@ -100,11 +102,11 @@ set_map_frame(fig, ax, enabled=False, linewidth=1.2, color="black", pad=0.0)
 
 fig.patch.set_visible(False)   # removes patch_1
 ax.patch.set_visible(False)    # removes patch_2
-fig.savefig("maps/koeln_a4_filtered_30m.svg", format="svg", transparent=True)
+fig.savefig(f"maps/koeln_{FORMAT}_filtered_30m.svg", format="svg", transparent=True)
 
 #### this command needs a return object (label_layout) from add_map_labels()
 # vpype_add_hershey_text(
-#     "maps/koeln_a4_filtered_30m.svg",
+#     f"maps/koeln_{FORMAT}_filtered_30m.svg",
 #     "maps/koeln.svg",
 #     label_layout,
 #     font="timesr",
@@ -119,6 +121,8 @@ plt.close(fig)
 
 print("#### #### ####")
 
+city_fontsize = 26 if FORMAT == "a3" else 20
+
 export_svg_with_layers(
     G=G,
     location=location,
@@ -131,9 +135,9 @@ export_svg_with_layers(
 
     out_base="maps/koeln_base.svg",
     out_overlay="maps/koeln_overlay.svg",
-    out_combined="maps/koeln_combined.svg",
+    out_combined=f"maps/koeln_combined_{FORMAT}.svg",
 
-    city_fontsize=20,
+    city_fontsize=city_fontsize,
     coord_fontsize=12,
     padding_factor=0.3,
     between_factor=0.5,

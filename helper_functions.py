@@ -392,6 +392,10 @@ def export_svg_with_layers(
                 show_coords=False,
                 coords_override=marker_latlon,  # show marker coords if present
                 coords_color=marker_color,      # same color as dot
+                city_fontsize=city_fontsize,
+                coord_fontsize=coord_fontsize,
+                padding_factor=padding_factor,
+                between_factor=between_factor,
                 text_backend="vpype",           # IMPORTANT
             )
 
@@ -407,6 +411,10 @@ def export_svg_with_layers(
                 reserve_city=True,
                 reserve_coords=True,
                 canonical_coord_text=canonical_coord_text,
+                city_fontsize=city_fontsize,
+                coord_fontsize=coord_fontsize,
+                padding_factor=padding_factor,
+                between_factor=between_factor,
 
                 show_city=True,
                 show_coords=False,
@@ -439,6 +447,10 @@ def export_svg_with_layers(
                 show_coords=False,
                 coords_override=marker_latlon,  # show marker coords if present
                 coords_color=marker_color,      # same color as dot
+                city_fontsize=city_fontsize,
+                coord_fontsize=coord_fontsize,
+                padding_factor=padding_factor,
+                between_factor=between_factor,
                 text_backend="vpype",           # IMPORTANT
             )
 
@@ -453,6 +465,10 @@ def export_svg_with_layers(
                 reserve_city=True,
                 reserve_coords=True,
                 canonical_coord_text=canonical_coord_text,
+                city_fontsize=city_fontsize,
+                coord_fontsize=coord_fontsize,
+                padding_factor=padding_factor,
+                between_factor=between_factor,
 
                 show_city=True,
                 show_coords=False,

@@ -4,7 +4,7 @@ def get_page_layout(paper_format: str, margin_mm: float):
     with a margin around the edges.
 
     Args:
-        paper_format (str): "a3" or "a4" (portrait).
+        paper_format (str): "a3", "a4", or "a5" (portrait).
         margin_mm (float): margin size in millimeters.
 
     Returns:
@@ -14,13 +14,14 @@ def get_page_layout(paper_format: str, margin_mm: float):
     """
     # ISO 216 sizes in mm (portrait)
     sizes = {
+        "a5": (148, 210),
         "a4": (210, 297),
         "a3": (297, 420)
     }
 
     fmt = paper_format.lower()
     if fmt not in sizes:
-        raise ValueError("paper_format must be 'a3' or 'a4'")
+        raise ValueError("paper_format must be 'a3', 'a4', or 'a5'")
 
     width_mm, height_mm = sizes[fmt]
 
