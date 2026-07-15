@@ -71,6 +71,7 @@ export_svg_with_layers(
     out_overlay="maps/koeln_overlay.svg",
     out_combined=f"maps/koeln_combined_{FORMAT}.svg",
     out_combined_preview=f"maps/koeln_combined_{FORMAT}_preview.svg",
+    metadata=f"maps/koeln_combined_{FORMAT}_metadata.yaml",
 
     city_fontsize=city_fontsize,
     coord_fontsize=12,

@@ -1,3 +1,7 @@
+import math
+from pathlib import Path
+from numbers import Number
+
 import osmnx as ox
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -9,6 +13,52 @@ from src.letters.styling import draw_bold_text
 from src.letters.vpype import vpype_add_hershey_text
 from src.location import add_marker
 from src.location import get_location_coordinates
+
+
+def _write_yaml(path, data):
+    def scalar(value):
+        if value is None:
+            return "null"
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, Number):
+            number = float(value)
+            if not math.isfinite(number):
+                return f'"{value}"'
+            return str(value)
+        text = str(value)
+        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+
+    def lines_for(value, indent=0):
+        prefix = " " * indent
+        if isinstance(value, dict):
+            lines = []
+            for key, item in value.items():
+                if isinstance(item, (dict, list, tuple)):
+                    lines.append(f"{prefix}{key}:")
+                    lines.extend(lines_for(item, indent + 2))
+                else:
+                    lines.append(f"{prefix}{key}: {scalar(item)}")
+            return lines
+        if isinstance(value, (list, tuple)):
+            lines = []
+            for item in value:
+                if isinstance(item, dict):
+                    lines.append(f"{prefix}-")
+                    lines.extend(lines_for(item, indent + 2))
+                elif isinstance(item, (list, tuple)):
+                    lines.append(f"{prefix}-")
+                    lines.extend(lines_for(item, indent + 2))
+                else:
+                    lines.append(f"{prefix}- {scalar(item)}")
+            return lines
+        return [f"{prefix}{scalar(value)}"]
+
+    output_path = Path(path)
+    if output_path.parent != Path("."):
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text("\n".join(lines_for(data)) + "\n", encoding="utf-8")
 
 def add_map_labels(
     fig,
@@ -282,6 +332,7 @@ def export_svg_with_layers(
     position="bottom",
     out_combined="combined.svg",
     out_combined_preview=None,
+    metadata=None,
     out_base="layer_base.svg",
     out_overlay="layer_overlay.svg",
     city_fontsize=20,
@@ -297,6 +348,7 @@ def export_svg_with_layers(
       - overlay:  marker + coords only (city reserved for consistent centering)
       - combined: everything
       - combined preview: everything plus a red margin guide, if requested
+      - metadata: YAML run parameters for the combined file, if requested
 
     Key: compute ONE delta using canonical coord string, reuse it for all 3.
     """
@@ -536,32 +588,36 @@ def export_svg_with_layers(
     if point is not None:
         marker_latlon2 = add_marker(ax_all, G, point, color=marker_color, size=marker_size)
 
+    combined_label_params = {
+        "mode": mode,
+        "position": position,
+        "show_city": True,
+        "show_coords": False,
+        "reserve_city": True,
+        "reserve_coords": True,
+        "coords_override": marker_latlon2,
+        "coords_color": marker_color if marker_latlon2 is not None else "black",
+        "city_fontsize": city_fontsize,
+        "coord_fontsize": coord_fontsize,
+        "padding_factor": padding_factor,
+        "between_factor": between_factor,
+        "delta_override": delta,
+        "canonical_coord_text": canonical_coord_text,
+        "hatch_city": True,
+        "hatch_coords": False,
+        "hatch_spacing_mm": 0.3,
+        "hatch_angle_deg": 25,
+        "hatch_outline": True,
+        "hatch_outline_lw": 0.5,
+        "hatch_lw": 0.30,
+        "passes": multipass,
+    }
+
     add_map_labels(
         fig_all,
         ax_all,
         location,
-        mode=mode,
-        position=position,
-        show_city=True,
-        show_coords=False,
-        reserve_city=True,
-        reserve_coords=True,
-        coords_override=marker_latlon2,
-        coords_color=marker_color if marker_latlon2 is not None else "black",
-        city_fontsize=city_fontsize,
-        coord_fontsize=coord_fontsize,
-        padding_factor=padding_factor,
-        between_factor=between_factor,
-        delta_override=delta,
-        canonical_coord_text=canonical_coord_text,
-        hatch_city=True,
-        hatch_coords=False,
-        hatch_spacing_mm=0.3,
-        hatch_angle_deg=25,
-        hatch_outline=True,
-        hatch_outline_lw=0.5,
-        hatch_lw=0.30,
-        passes=multipass
+        **combined_label_params,
     )
 
     fig_all.patch.set_visible(False)
@@ -586,5 +642,64 @@ def export_svg_with_layers(
         fig_all.patch.set_visible(True)
         fig_all.patch.set_facecolor("white")
         fig_all.savefig(out_combined_preview, format="svg", transparent=False)
+
+    if metadata is not None:
+        fig_w_mm = fig_w * 25.4
+        fig_h_mm = fig_h * 25.4
+        final_ax_pos = ax_all.get_position()
+        _write_yaml(
+            metadata,
+            {
+                "outputs": {
+                    "combined": out_combined,
+                    "combined_preview": out_combined_preview,
+                    "base": out_base,
+                    "overlay": out_overlay,
+                },
+                "location": location,
+                "graph": {
+                    "nodes": len(G.nodes),
+                    "edges": len(G.edges),
+                    "crs": G.graph.get("crs"),
+                },
+                "page": {
+                    "width_in": fig_w,
+                    "height_in": fig_h,
+                    "width_mm": fig_w_mm,
+                    "height_mm": fig_h_mm,
+                    "initial_axes_rect": list(rect),
+                    "initial_axes_rect_mm": [
+                        rect[0] * fig_w_mm,
+                        rect[1] * fig_h_mm,
+                        rect[2] * fig_w_mm,
+                        rect[3] * fig_h_mm,
+                    ],
+                    "combined_axes_rect": [
+                        final_ax_pos.x0,
+                        final_ax_pos.y0,
+                        final_ax_pos.width,
+                        final_ax_pos.height,
+                    ],
+                },
+                "map": {
+                    "xlim": list(xlim),
+                    "ylim": list(ylim),
+                    "aspect": aspect,
+                    "node_size": 0,
+                    "edge_color": "black",
+                    "edge_linewidth": 0.5,
+                },
+                "marker": {
+                    "point": list(point) if point is not None else None,
+                    "resolved_latlon": list(marker_latlon2) if marker_latlon2 is not None else None,
+                    "color": marker_color,
+                    "size": marker_size,
+                    "visible": point is not None,
+                },
+                "combined_labels": combined_label_params,
+                "text_backend": text_backend,
+                "multipass": multipass,
+            },
+        )
 
     plt.close(fig_all)
