@@ -11,7 +11,7 @@ from src.location import get_graph, add_marker, filter_short_edges
 ox.settings.use_cache = True
 ox.settings.log_console = True
 
-FORMAT = "a3"
+FORMAT = "a4"
 
 location = "Köln"  # "Berlin, Germany"  # or (52.52, 13.405)
 fig_w, fig_h, rect = get_page_layout(FORMAT, 30)
@@ -55,73 +55,7 @@ ox.plot_graph(
     edge_linewidth=0.5
 )
 
-# # show a 5km-tall window centered on Brandenburger Tor
-# crop_view_to_frame(
-#     fig, ax, G,
-#     center_latlon=(52.516275, 13.377704),
-#     height_m=5000
-# )
-
-# Add marker point
-#marker_latlon = add_marker(ax, G, point, color=marker_color, size=20)
-
-# --- LABELS (choose layout mode here) ---
-# Map + labels centered, with coordinates
-add_map_labels(
-    fig,
-    ax,
-    location,
-    mode="block_centered",
-    position="bottom",
-    show_city=True,
-    show_coords=False,
-    coords_override=None,  # show marker coords if present
-    #coords_color=marker_color,      # same color as dot
-    text_backend="mpl",           # IMPORTANT
-    passes=2,
-    city_draw="plain",
-    hatch_city=True,
-    hatch_coords=False,
-    hatch_spacing_mm=0.3,
-    hatch_angle_deg=25,
-    hatch_outline=True,
-    hatch_outline_lw=0.5,
-    hatch_lw=0.30,
-)
-
-# or: Map + only city name centered, no coordinates
-# add_map_labels(fig, ax, location, mode="block_centered", position="top", show_coords=False, padding_factor=0.5)
-
-# or: keep only the map centered, text just appended below
-#add_map_labels(fig, ax, location, mode="map_centered", position="bottom", show_coords=True)
-
-# turn frame on / off by setting 'enabled' arg
-set_map_frame(fig, ax, enabled=False, linewidth=1.2, color="black", pad=0.0)
-
-# --- SAVE AS SVG ---
-
-fig.patch.set_visible(False)   # removes patch_1
-ax.patch.set_visible(False)    # removes patch_2
-fig.savefig(f"maps/koeln_{FORMAT}_filtered_30m.svg", format="svg", transparent=True)
-
-#### this command needs a return object (label_layout) from add_map_labels()
-# vpype_add_hershey_text(
-#     f"maps/koeln_{FORMAT}_filtered_30m.svg",
-#     "maps/koeln.svg",
-#     label_layout,
-#     font="timesr",
-#     stroke_distance_mm=0.3,
-#     offset_paths=6,
-#     offset_rings=(0.0, 0.33, 0.66, 1.0),
-#     passes=1,
-# )
-
-
-plt.close(fig)
-
-print("#### #### ####")
-
-city_fontsize = 26 if FORMAT == "a3" else 20
+city_fontsize = 24 if FORMAT == "a3" else 20
 
 export_svg_with_layers(
     G=G,
@@ -136,6 +70,7 @@ export_svg_with_layers(
     out_base="maps/koeln_base.svg",
     out_overlay="maps/koeln_overlay.svg",
     out_combined=f"maps/koeln_combined_{FORMAT}.svg",
+    out_combined_preview=f"maps/koeln_combined_{FORMAT}_preview.svg",
 
     city_fontsize=city_fontsize,
     coord_fontsize=12,

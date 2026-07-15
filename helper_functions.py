@@ -1,5 +1,6 @@
 import osmnx as ox
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 from src.layout import compute_block_center_delta, get_text_height
 from src.letters.styling import fig_hatch_filled_text
@@ -280,6 +281,7 @@ def export_svg_with_layers(
     mode="block_centered",
     position="bottom",
     out_combined="combined.svg",
+    out_combined_preview=None,
     out_base="layer_base.svg",
     out_overlay="layer_overlay.svg",
     city_fontsize=20,
@@ -294,6 +296,7 @@ def export_svg_with_layers(
       - base:     map + city only (coords reserved for consistent centering)
       - overlay:  marker + coords only (city reserved for consistent centering)
       - combined: everything
+      - combined preview: everything plus a red margin guide, if requested
 
     Key: compute ONE delta using canonical coord string, reuse it for all 3.
     """
@@ -564,4 +567,24 @@ def export_svg_with_layers(
     fig_all.patch.set_visible(False)
     ax_all.patch.set_visible(False)
     fig_all.savefig(out_combined, format="svg", transparent=True)
+
+    if out_combined_preview is not None:
+        margin_x, margin_y, margin_w, margin_h = rect
+        margin_guide = Rectangle(
+            (margin_x, margin_y),
+            margin_w,
+            margin_h,
+            transform=fig_all.transFigure,
+            fill=False,
+            edgecolor="red",
+            linewidth=1.0,
+            zorder=10000,
+            clip_on=False,
+            joinstyle="miter",
+        )
+        fig_all.add_artist(margin_guide)
+        fig_all.patch.set_visible(True)
+        fig_all.patch.set_facecolor("white")
+        fig_all.savefig(out_combined_preview, format="svg", transparent=False)
+
     plt.close(fig_all)
