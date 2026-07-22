@@ -1,6 +1,8 @@
 import math
 from pathlib import Path
 from numbers import Number
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import osmnx as ox
 import matplotlib.pyplot as plt
@@ -650,6 +652,7 @@ def export_svg_with_layers(
         _write_yaml(
             metadata,
             {
+                "generated_at": datetime.now(ZoneInfo("Europe/Berlin")).isoformat(timespec="minutes"),
                 "outputs": {
                     "combined": out_combined,
                     "combined_preview": out_combined_preview,
