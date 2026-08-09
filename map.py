@@ -11,10 +11,15 @@ from src.location import get_graph, add_marker, filter_short_edges
 ox.settings.use_cache = True
 ox.settings.log_console = True
 
-FORMAT = "a3"
+FORMAT = "a5"
+MARGIN_BY_FORMAT_MM = {
+    "a5": 10,
+    "a4": 20,
+    "a3": 30,
+}
 
 location = "Köln"  # "Berlin, Germany"  # or (52.52, 13.405)
-fig_w, fig_h, rect = get_page_layout(FORMAT, 30)
+fig_w, fig_h, rect = get_page_layout(FORMAT, MARGIN_BY_FORMAT_MM[FORMAT.lower()])
 
 # Example point (Brandenburger Tor)
 point = (52.516275, 13.377704)
