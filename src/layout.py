@@ -71,13 +71,14 @@ def compute_block_center_delta(
     reserve_city=True,
     reserve_coords=True,
     canonical_coord_text="00.0000° N, 000.0000° E",
+    alias=None,
 ):
     """
     Compute ONE vertical centering delta for block_centered mode.
     Use a canonical coord string so base/overlay/combined align perfectly.
     """
     ax_pos = ax.get_position()
-    city_text = str(location)
+    city_text = str(alias if alias is not None else location)
 
     # These must exist in your helpers
     city_h = get_text_height(fig, city_text, city_fontsize) if reserve_city else 0.0

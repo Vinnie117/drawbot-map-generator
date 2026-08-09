@@ -19,6 +19,7 @@ MARGIN_BY_FORMAT_MM = {
 }
 
 location = "Köln"  # "Berlin, Germany"  # or (52.52, 13.405)
+alias = "50° 56' N , 6° 57' O"
 fig_w, fig_h, rect = get_page_layout(FORMAT, MARGIN_BY_FORMAT_MM[FORMAT.lower()])
 
 # Example point (Brandenburger Tor)
@@ -65,6 +66,7 @@ city_fontsize = 24 if FORMAT == "a3" else 20
 export_svg_with_layers(
     G=G,
     location=location,
+    alias=alias,
     page_layout=(fig_w, fig_h, rect),
     point=None,                     # set to None if no marker
     marker_color=marker_color,

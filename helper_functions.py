@@ -96,6 +96,7 @@ def add_map_labels(
     hatch_outline=True,
     hatch_outline_lw=0.6,
     hatch_lw=0.35,
+    alias=None,
 ):
     """
     Computes layout for city / coord labels above/below the map.
@@ -126,7 +127,7 @@ def add_map_labels(
         bold_kwargs = {}
 
     ax_pos = ax.get_position()
-    city_text = str(location)
+    city_text = str(alias if alias is not None else location)
 
     # --- coordinate text (and precision) ---
     if coords_override is not None:
@@ -342,7 +343,8 @@ def export_svg_with_layers(
     padding_factor=0.3,
     between_factor=0.5,
     text_backend = None,
-    multipass=1
+    multipass=1,
+    alias=None
 ):
     """
     Export three SVGs that overlay perfectly (puzzle-piece alignment):
@@ -352,6 +354,7 @@ def export_svg_with_layers(
       - combined preview: everything plus a red margin guide, if requested
       - metadata: YAML run parameters for the combined file, if requested
 
+    alias overrides the displayed city label without changing geocoding.
     Key: compute ONE delta using canonical coord string, reuse it for all 3.
     """
     fig_w, fig_h, rect = page_layout
@@ -385,6 +388,7 @@ def export_svg_with_layers(
         ax_base,
         location,
         position=position,
+        alias=alias,
         city_fontsize=city_fontsize,
         coord_fontsize=coord_fontsize,
         padding_factor=padding_factor,
@@ -399,6 +403,7 @@ def export_svg_with_layers(
         fig_base,
         ax_base,
         location,
+        alias=alias,
         mode=mode,
         position=position,
         show_city=False,
@@ -443,6 +448,7 @@ def export_svg_with_layers(
                 fig_ov,
                 ax_ov,
                 location,
+                alias=alias,
                 mode="block_centered",
                 position="bottom",
                 show_city=True,
@@ -461,6 +467,7 @@ def export_svg_with_layers(
             ### Matplotlib
             add_map_labels(
                 fig_ov, ax_ov, location,
+                alias=alias,
                 mode=mode,
                 position=position,
                 text_backend="mpl",
@@ -498,6 +505,7 @@ def export_svg_with_layers(
                 fig_ov,
                 ax_ov,
                 location,
+                alias=alias,
                 mode="block_centered",
                 position="bottom",
                 show_city=True,
@@ -515,6 +523,7 @@ def export_svg_with_layers(
             ### Matplotlib
             add_map_labels(
                 fig_ov, ax_ov, location,
+                alias=alias,
                 mode=mode,
                 position=position,
                 text_backend="mpl",
@@ -594,6 +603,7 @@ def export_svg_with_layers(
         "mode": mode,
         "position": position,
         "show_city": True,
+        "alias": alias,
         "show_coords": False,
         "reserve_city": True,
         "reserve_coords": True,
@@ -660,6 +670,7 @@ def export_svg_with_layers(
                     "overlay": out_overlay,
                 },
                 "location": location,
+                "alias": alias,
                 "graph": {
                     "nodes": len(G.nodes),
                     "edges": len(G.edges),
